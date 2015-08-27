@@ -1,0 +1,100 @@
+#wppc-contest {
+	width: 100%;
+	display: table;
+}
+
+#wppc-main, #wppc-sidebar {
+	display: table-cell;
+	vertical-align: top;
+}
+
+#wppc-main {
+	max-width: 83%;
+	width: 83%;
+	height: auto;
+	padding-right: 2rem;
+}
+
+.pagination {
+	margin: 0;
+	margin-bottom: 10px;
+}
+
+#wppc-main img {
+	width: 100% !important;
+	height: auto !important;
+}
+
+#wppc-main .photo {
+	width: 190px;
+	border: 1px solid #ddd;
+	display: inline-block;
+	margin-right: 10px;
+	margin-bottom: 10px;
+	padding: 7px;
+	vertical-align: top;
+}
+
+#wppc-main .photo img {
+	width: 100% !important;
+	height: auto;
+	-webkit-transition: .3s;
+	transition: .3s;
+}
+
+#wppc-main .photo img:hover {
+	filter: grayscale(100%);
+	-webkit-filter: grayscale(100%);
+}
+
+#wppc-sidebar {
+	width: 17%;
+}
+
+input[type=submit] {
+	-webkit-transition: .3s;
+	transition: .3s;
+}
+
+
+/**
+ * SOCIAL BUTTONS
+ */
+.wppc-social-buttons img:hover {
+	-webkit-transition: none !important;
+	-moz-transition: none !important;
+	-ms-transition: none !important;
+	-o-transition: none !important;
+	transition: none !important;
+	filter: none !important;
+	-webkit-filter: none !important;
+}
+
+.wppc-share-button {
+	width: 60px !important;
+	height: 20px !important;
+	vertical-align: top;
+	cursor: pointer;
+}
+
+@media screen and (max-width: 480px) {
+	#wppc-main, #wppc-sidebar {
+		display: table-row;
+	}
+
+	#wppc-main .photo {
+		width: 100%;
+		margin-bottom: 2rem;
+	}
+}
+
+#contest-winners table td {
+	width: auto;
+	padding: 10px;
+	padding: 1rem;
+}
+
+#contest-prizes img {
+	width: auto !important;
+	height: auto !important;
+}
