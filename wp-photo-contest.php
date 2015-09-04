@@ -7,7 +7,7 @@
 	 *	Author: Corneliu C&icirc;rlan
 	 *	License: GPLv2 or later
 	 *	Version: 1.0
-	 *	Author URI: https://linkedin.com/in/corneliucirlan
+	 *	Author URI: http://www.TwoCSoft.com
 	 */
 
 	/**

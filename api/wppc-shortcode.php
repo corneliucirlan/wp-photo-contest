@@ -498,7 +498,7 @@
 								/* CONTEST ABOUT */
 								if ($contest->contest_about != ''):
 									echo '<div id="contest-about">';
-										echo $contest->contest_about;
+										echo $this->formatContent($contest->contest_about);
 									echo '</div>';
 								endif;
 
@@ -574,11 +574,11 @@
 										</ul>
 										<?php $rules = unserialize($contest->contest_rules); ?>
 										<div id="en-rules">
-											<?php echo $rules['en'] ?>
+											<?php echo $this->formatContent($rules['en']) ?>
 										</div>
 									
 										<div id="ro-rules">
-											<?php echo $rules['ro'] ?>
+											<?php echo $this->formatContent($rules['ro']) ?>
 										</div>
 									</div>
 								</div>
@@ -587,7 +587,7 @@
 							/* CONTEST PRIZES */
 							if ($contest->contest_prizes != ''):
 								echo '<div id="contest-prizes">';
-									echo $contest->contest_prizes;
+									echo $this->formatContent($contest->contest_prizes);
 								echo '</div>';
 							endif;
 
@@ -955,7 +955,25 @@
 
 				return array($r, $g, $b);
 			}
-		}
+
+
+			/**
+			 * FORMAT CONTENT
+			 */
+			private function formatContent($content)
+			{
+				// breaks to new lines
+				$content = nl2br($content);
+
+				// strip slashes
+				$content = stripslashes($content);
+
+				// return formatted content
+				return $content;
+			}
+			
+
+		} // END CLASS
 	endif;
 
 ?>
