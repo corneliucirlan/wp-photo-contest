@@ -26,14 +26,36 @@
 			private $photosPerPage;
 
 			/**
+			 * CONTESTS TABLE
+			 */
+			private $contestsTable;
+
+			/**
+			 * CONTEST ENTRIES TABLE
+			 */
+			private $contestEntriesTable;
+
+			/**
+			 * CONTEST VOTES TABLE
+			 */
+			private $contestVotesTable;
+
+			/**
 			 * CONSTRUCTOR
 			 */
 			public function __construct()
 			{
+				global $wpdb;
+				
 				// LOAD SETTINGS
 				$this->generalSettings = get_option(WPPC_SETTINGS_GENERAL);
 				$this->watermarkSettings = get_option(WPPC_SETTINGS_WATERMARK);
 				$this->photosPerPage = $this->generalSettings['photosPerPage'];
+
+				// initialize params
+				$this->contestsTable = $wpdb->prefix.'wppc_contests_all';
+				$this->contestEntriesTable = $wpdb->prefix.'wppc_contests_entries';
+				$this->contestVotesTable = $wpdb->prefix.'wppc_contests_votes';
 
 				// SET TIMEZONE
 				date_default_timezone_set($this->generalSettings['timezone']);
@@ -60,6 +82,15 @@
 				add_action('wp_head', function() {
 					$settings = get_option(WPPC_SETTINGS_GENERAL);
 					?>
+					<script>
+						jQuery(document).ready(function($) {
+							$('#wppc-photos').masonry({
+								itemSelector: '.photo',
+								isAnimated: true,
+								columnWidth: '.photo',
+							});
+						});
+					</script>
 					<!-- <script>
 					<?php if ($settings['loadFacebookJs'] == 1): ?>
 						(function(d, s, id) {
@@ -122,7 +153,10 @@
 				wp_localize_script('wppc-ajax-frontend', 'wppcSubmitPhoto', array(
 					'ajaxurl' => WPPC_URI.'ajax/ajax-handler.php',
 					'action' => $this->submitFormAction,
-				));				
+				));
+
+				// load masonry script
+				wp_enqueue_script('masonry');
 			}
 
 			/**
@@ -217,7 +251,7 @@
 								$image = wp_get_image_editor($contestDir.'raw/'.$filename);
 								
 								// CREATE THE "THUMBS" PHOTO
-								$image->resize(200, 200, true);
+								$image->resize(200, 200, false); // true - creates a square photo
 								$image->save($contestDir.'thumbs/'.$filename);
 
 								// CREATE THE "MEDIUM" PHOTO
@@ -249,7 +283,7 @@
 								// NOTIFY ADMINS VIA EMAIL
 								if ($this->generalSettings['notifyAdmins'] == 1):
 									$contest = $wpdb->get_row("SELECT contest_name FROM ".$wpdb->prefix."wppc_contests_all WHERE id=".$id);
-									include_once(WPPC_DIR.'php/PHPMailer/PHPMailerAutoload.php');
+									/*include_once(WPPC_DIR.'php/PHPMailer/PHPMailerAutoload.php');
 
 									$mail = new PHPMailer();
 									$mail->IsSMTP();
@@ -259,14 +293,36 @@
 									$mail->From = "wppc@".str_replace('www.', '', $_SERVER['SERVER_NAME']);
 									$mail->FromName = get_bloginfo();
 									$mail->Subject = "New Photo Submitted";
-									$mail->Body = "A new photo has been submitted in the '".$contest->contest_name."' contest.<br/><br/> <a href=".admin_url('admin.php?page=wppc-contest&wppc-id='.$id.'&wppc-action=view').">Click here to view it</a>";
-						
-									$admins = get_users(array('role'=>'administrator'));
-									foreach ($admins as $admin)
-										$mail->AddCC($admin->data->user_email, $admin->data->display_name);
+									$mail->Body = "A new photo has been submitted in the '".$contest->contest_name."' contest.<br/><br/> <a href=".admin_url('admin.php?page=wppc-contest&wppc-id='.$id.'&wppc-action=view').">Click here to view it</a>";*/
+										//$mail->AddCC($admin->data->user_email, $admin->data->display_name);
+									//$mail->Send();
+									//$mail->ClearAllRecipients();
+									
 
-									$mail->Send();
-									$mail->ClearAllRecipients();
+									
+						
+									// connect to SendGrid API
+									$sendgrid = new SendGrid(get_option('sendgrid_user'), get_option('sendgrid_pwd'));
+
+									// send email to all admins
+									$admins = get_users(array('role'=>'administrator'));
+									foreach ($admins as $admin):
+										
+										// create new email
+										$email = new SendGrid\Email();
+
+										// add recipient email
+										$email->addTo($admin->data->user_email, $admin->data->display_name)
+											  ->setFrom("wppc@".str_replace('www.', '', $_SERVER['SERVER_NAME']))
+											  ->setFromName(get_bloginfo())
+											  ->setSubject("New Photo Submitted")
+											  ->setHtml("A new photo has been submitted in the <strong>".$contest->contest_name."</strong> contest.<br/><br/> <a href=".admin_url('admin.php?page=wppc-contest&contest='.$id.'&activity=view').">Click here to view it</a>");
+
+										// send email to user
+										$sendgrid->send($email);
+
+									endforeach;
+
 								endif;
 
 								$jsonResponse['entryAdded'] = true;
@@ -532,10 +588,12 @@
 												<option value="point-5">5 points</option>
 											</select>
 										</div>
-										<div class="col-md-3 col-md-offset-1">
-											<input type="hidden" value="<?php echo $contest->id ?>" />
-											<button type="button" value="mobile-only" class="btn btn-primary" id="wppc-button-filter">Mobile only</button>
-										</div>
+										<?php if ($contest->photos_mobile_allowed > 0): ?>
+											<div class="col-md-3 col-md-offset-1">
+												<input type="hidden" value="<?php echo $contest->id ?>" />
+												<button type="button" value="mobile-only" class="btn btn-primary" id="wppc-button-filter">Mobile only</button>
+											</div>
+										<?php endif; ?>
 									</div>
 									<?php
 									echo '<div id="wppc-photos">';
@@ -573,13 +631,8 @@
 											<li style="display: inline; margin-right: 2rem;"><a href="#ro-rules"><img style="max-width: 30px;" src="<?php echo WPPC_URI.'img/flags/ro-flag.png' ?>" /></a></li>
 										</ul>
 										<?php $rules = unserialize($contest->contest_rules); ?>
-										<div id="en-rules">
-											<?php echo $this->formatContent($rules['en']) ?>
-										</div>
-									
-										<div id="ro-rules">
-											<?php echo $this->formatContent($rules['ro']) ?>
-										</div>
+										<div id="en-rules"><?php echo $rules['en'] ?></div>
+										<div id="ro-rules"><?php echo $rules['ro'] ?></div>
 									</div>
 								</div>
 							<?php endif;
@@ -609,7 +662,7 @@
 					
 					<div id="wppc-sidebar">
 						<?php /* FOLLOW US */ setFollowUs(); ?>
-						<a class="newsletter-subscribe" style="margin-bottom: 20px;" target="_blank" href="<?php echo get_permalink(2306); ?>">+ Subscribe to our newsletter</a>
+						<br/><br/>
 						<?php echo $contest->contest_sidebar ?>
 					</div>
 				</div>
@@ -665,7 +718,7 @@
 						<div class="wppc-social-buttons">
 							<img class='wppc-share-button' style="width: 60px !important; height: 20px !important;" src="<?php echo WPPC_URI ?>img/facebook-share.png" onclick="shareOnFacebook('<?php echo $contestURL ?>', '<?php echo $contestDir ?>medium/<?php echo $contestPhoto->competitor_photo ?>', '<?php echo $name ?>', '<?php echo $caption ?>')" />
 							<a href="https://plus.google.com/share?url=<?php echo $contestURL ?>" onclick="javascript:window.open(this.href,'', 'menubar=no,toolbar=no,resizable=yes,scrollbars=yes,height=600,width=600');return false;"><img class="wppc-share-button" style="width: 60px !important; height: 20px !important; vertical-align: top" src="<?php echo WPPC_URI ?>img/google-share.png" alt="Share on Google+"/></a>
-							<a href="//www.pinterest.com/pin/create/button/?url=<?php echo $contestURL ?>&amp;media=<?php echo $mediumPhoto ?>&amp;description=<?php echo $caption ?>" data-pin-do="buttonPin" data-pin-config="none" data-pin-color="white"><img src="//assets.pinterest.com/images/pidgets/pinit_fg_en_rect_white_20.png" style="width: 40px; height: 20px;" /></a>
+							<a href="//www.pinterest.com/pin/create/button/?url=<?php echo $contestURL ?>&amp;media=<?php echo $mediumPhoto ?>&amp;description=<?php echo $caption ?>" data-pin-do="buttonPin" data-pin-config="none" data-pin-color="white"><img src="<?php echo WPPC_URI ?>img/pinterest-share.png" style="width: 40px !important; height: 20px !important;" /></a>
 						</div>
 
 						<p class="help-block" style="text-align: left;">
@@ -706,8 +759,14 @@
 			 */
 			private function setEntryForm($id, $text)
 			{
+				global $wpdb;
+
+				// get number of mobile photos
+				$mobilePhotos = $wpdb->get_var("SELECT photos_mobile_allowed FROM $this->contestsTable WHERE id=".$id);
+
+
+				echo $text;
 				?>
-					<?php echo $text ?>
 					<div id="wppc-results"></div>
 					<form class="form-horizontal" role="form" method="post" action="" id="wppc-form" enctype="multipart/form-data" style="margin-top: 30px;">
 						<input type="hidden" name="wppc-id" id="wppc-id" value="<?php echo $id ?>" />
@@ -736,15 +795,17 @@
 						</div>
 
 						<!-- MOBILE PHOTO -->
-						<div class="form-group has-feedback">
-							<div class="col-sm-offset-2 col-sm-10">
-								<div class="checkbox col-sm-4">
-									<label>
-										<input type="checkbox" name="wppc-mobile-photo" id="wppc-mobile-photo" /> Mobile photo
-									</label>
+						<?php if ($mobilePhotos > 0): ?>
+							<div class="form-group has-feedback">
+								<div class="col-sm-offset-2 col-sm-10">
+									<div class="checkbox col-sm-4">
+										<label>
+											<input type="checkbox" name="wppc-mobile-photo" id="wppc-mobile-photo" /> Mobile photo
+										</label>
+									</div>
 								</div>
 							</div>
-						</div>
+						<?php endif; ?>
 
 						<!-- PHOTO NAME AND LOCATION -->
 						<div class="form-group has-feedback">

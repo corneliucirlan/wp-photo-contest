@@ -87,17 +87,18 @@ jQuery(document).ready(function($) {
 			data:
 			{
 				action: 'test-admit-email',
-				subject: $('#contestAdmitPhotoSubject').val(),
-				body: $('#contestAdmitPhotoBody').val()
+				subject: $('#admitted-subject').val(),
+				body: $('#admitted-body').val()
 			},
 		})
 		.done(function(data) {
 			$('#admit-result').html(data);
-			//console.log(data);
+			console.log(data);
 			console.log("success");
 		})
-		.fail(function() {
+		.fail(function(xhr) {
 			console.log("error");
+			console.log(xhr);
 		})
 		.always(function() {
 			console.log("complete");

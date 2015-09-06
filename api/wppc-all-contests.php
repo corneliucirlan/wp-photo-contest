@@ -45,18 +45,25 @@
 				parent::__construct(array(
 					'singular'	=> 'Contest',
 					'plural'	=> 'Contests',
-					'screen'	=> 'interval-list',
+					'screen'	=> 'contests-list',
 					'ajax'		=> false,
 				));
 
 				// CREATE WPPC MENU
-				add_action('admin_menu', function() {
-					// CREATE ITEM IN ADMIN MENU
-					add_menu_page('WordPress Photo Contests', 'Photo Contests', 'manage_options', 'wppc-all-contests', array($this, 'displayWPPCAllContests'), plugins_url('wp-photo-contest/img/icon_16.png'), 99);
+				add_action('admin_menu', array($this, 'renderMenuItems'));
+			}
+
+
+			/**
+			 * CALLBACK FUNCTION TO RENDER MENU ITEMS
+			 */
+			public function renderMenuItems()
+			{
+				// CREATE ITEM IN ADMIN MENU
+				add_menu_page('WordPress Photo Contests', 'Photo Contests', 'manage_options', 'wppc-all-contests', array($this, 'displayWPPCAllContests'), plugins_url('wp-photo-contest/img/icon_16.png'), 99);
 		
-					// ADD "ALL CONTESTS" ITEM
-					add_submenu_page("wppc-all-contests", "All Contests", "All Contests", "manage_options", "wppc-all-contests", array($this, 'displayWPPCAllContests'));
-				});
+				// ADD "ALL CONTESTS" ITEM
+				add_submenu_page("wppc-all-contests", "All Contests", "All Contests", "manage_options", "wppc-all-contests", array($this, 'displayWPPCAllContests'));
 			}
 
 

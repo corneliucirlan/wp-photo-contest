@@ -4,11 +4,11 @@
 	if (!defined('ABSPATH')) die;
 	
 	// PRE-REQUIREMENTS
-	require_once(ABSPATH.'wp-admin/includes/template.php');
+	//require_once(ABSPATH.'wp-admin/includes/template.php');
 	if (!class_exists('WP_List_Table'))
 	    require_once(ABSPATH.'wp-admin/includes/class-wp-list-table.php');
-	if (!class_exists('WP_Screen'))
-		require_once( ABSPATH.'wp-admin/includes/screen.php');
+	//if (!class_exists('WP_Screen'))
+	//	require_once( ABSPATH.'wp-admin/includes/screen.php');
 
 	if (!class_exists('WPPCContest')):
 		class WPPCContest extends WP_List_Table
@@ -66,26 +66,16 @@
 				parent::__construct(array(
 					'singular'	=> 'Photo',
 					'plural'	=> 'Photos',
-					'screen'	=> 'interval-list',
+					'screen'	=> 'photos-list',
 					'ajax'		=> false,
 				));
 
 				// load admin scripts
-				add_action('admin_enqueue_scripts', function() {
-					// LOAD PAGE CSS
-					wp_enqueue_style('admin-wppc-contests', WPPC_URI.'css/wppc-contest.css', '', WPPC_VERSION);
-
-					// LOAD JQUERY & AJAX CALLBACKS
-					wp_enqueue_script('jquery','','','',true);
-					wp_enqueue_script('jquery-ui-core','','','',true);
-					wp_enqueue_script('jquery-ui-tabs','','','',true);
-					wp_enqueue_script('wppc-contest-js', WPPC_URI.'js/wppc-contest.js', array('jquery'), WPPC_VERSION, true);
-				});
+				add_action('admin_enqueue_scripts', array($this, 'enqueueAdminScripts'));				 
 
 				// add menu page
-				add_action('admin_menu', function() {
-					add_submenu_page('wppc-all-contests', 'Photo Contest', 'Contest', 'manage_options', 'wppc-contest', array($this, 'displayWPPContest'));
-				});
+				add_action('admin_menu', array($this, 'renderMenuItems')); 
+				
 
 				// SAVE/UPDATE NEW CONTEST IN THE DATABASE
 				add_action('admin_post_save-wp-photo-contest', array($this, 'saveWPPContest'));
@@ -93,6 +83,31 @@
 
 				// ADD HTML TAGS TO ALLOWED LIST
 				add_filter('wp_kses_allowed_html', array($this, 'allowedHTMLTags'), 1, 1);
+			}
+
+
+			/**
+			 * CALLBACK FUNCTION TO RENDER MENU ITEMS
+			 */
+			public function renderMenuItems()
+			{
+				add_submenu_page('wppc-all-contests', 'Photo Contest', 'Contest', 'manage_options', 'wppc-contest', array($this, 'displayWPPContest'));
+			}
+
+
+			/**
+			 * CALLBACK FUNCTION TO ENQUEUE ADMIN SCRIPTS
+			 */
+			public function enqueueAdminScripts()
+			{
+				// LOAD PAGE CSS
+				wp_enqueue_style('admin-wppc-contests', WPPC_URI.'css/wppc-contest.css', '', WPPC_VERSION);
+
+				// LOAD JQUERY & AJAX CALLBACKS
+				wp_enqueue_script('jquery','','','',true);
+				wp_enqueue_script('jquery-ui-core','','','',true);
+				wp_enqueue_script('jquery-ui-tabs','','','',true);
+				wp_enqueue_script('wppc-contest-js', WPPC_URI.'js/wppc-contest.js', array('jquery'), WPPC_VERSION, true);
 			}
 
 
@@ -191,14 +206,13 @@
 						$validEndDate = true;
 				
 				// get current contest photos
-				$photos = isset($_GET['contest']) ? $wpdb->get_results("SELECT * FROM $this->contestEntriesTable WHERE visible=".self::PHOTO_APPROVED) : array();
+				$photos = isset($_GET['contest']) ? $wpdb->get_results("SELECT * FROM $this->contestEntriesTable WHERE contest_id='".$_GET['contest']."' visible=".self::PHOTO_APPROVED) : array();
 
 				// unserialize data
 				$contestWinners = isset($_GET['contest']) && $contest->contest_winners != '' ? unserialize($contest->contest_winners) : array();
 				$contestEmails = isset($_GET['contest']) && $contest->contest_emails != '' ? unserialize($contest->contest_emails) : array();
 				$contestRules = isset($_GET['contest']) && $contest->contest_rules != '' ? unserialize($contest->contest_rules) : array();
 				
-				var_dump($validEndVote);
 				?>
 				<div id="tabs">
 					<ul class="nav-tab-wrapper" style="border-bottom: 1px solid #ddd;">
@@ -716,7 +730,7 @@
 			{
 				global $wpdb;
 
-
+				if ($_POST):
 				// CREATE CONTEST DATA ARRAY
 				$contestData = array(
 					'contest_name' 					=> esc_attr($_POST['name']),
@@ -790,6 +804,7 @@
 					if (!is_dir($dir))
 						wp_mkdir_p($dir);
 				endif;
+				endif;
 			}
 
 
@@ -858,7 +873,7 @@
 				$contestDir = $wpDir['baseurl'].'/wppc-photos/wppc-photos-'.$_GET['contest'].'/';
 				$contestPath = $wpDir['path'].'/wppc-photos/wppc-photos-'.$_GET['contest'].'/';
 
-				$newItems = $wpdb->get_var("SELECT COUNT(visible) FROM $this->contestEntriesTable WHERE visible=0");
+				$newItems = $wpdb->get_var("SELECT COUNT(visible) FROM $this->contestEntriesTable WHERE visible=0 AND contest_id=".$_GET['contest']);
 
 				$photo .= '<a class="view-photo-details" href="'.$contestDir.'raw/'.$item['competitor_photo'].'" data-photo-id="'.
 					$item['photo_id'].'" target="_blank">'.$item['competitor_photo'].'</a>';
@@ -900,9 +915,9 @@
 
 		    	$views = array();
 
-				$newItems = $wpdb->get_var("SELECT COUNT(visible) FROM $this->contestEntriesTable WHERE visible=".self::PHOTO_NEW);
-				$trashedItems = $wpdb->get_var("SELECT COUNT(visible) FROM $this->contestEntriesTable WHERE visible=".self::PHOTO_REJECTED);
-				$publishedItems = $wpdb->get_var("SELECT COUNT(visible) FROM $this->contestEntriesTable WHERE visible=".self::PHOTO_APPROVED);
+				$newItems = $wpdb->get_var("SELECT COUNT(visible) FROM $this->contestEntriesTable WHERE visible=".self::PHOTO_NEW." AND contest_id=".$_GET['contest']);
+				$trashedItems = $wpdb->get_var("SELECT COUNT(visible) FROM $this->contestEntriesTable WHERE visible=".self::PHOTO_REJECTED." AND contest_id=".$_GET['contest']);
+				$publishedItems = $wpdb->get_var("SELECT COUNT(visible) FROM $this->contestEntriesTable WHERE visible=".self::PHOTO_APPROVED." AND contest_id=".$_GET['contest']);
 
 				if ($newItems) $current = (!empty($_REQUEST['status']) ? $_REQUEST['status'] : 'new');
 					else $current = (!empty($_REQUEST['status']) ? $_REQUEST['status'] : 'publish');
@@ -1009,6 +1024,23 @@
 					// update the database to add the photo to the contest
 					$wpdb->update($this->contestEntriesTable, array('visible' => self::PHOTO_APPROVED), array('photo_id' => $_GET['id'], 'contest_id' => $_GET['contest']));
 
+					// connect to SendGrid API
+					$sendgrid = new SendGrid(get_option('sendgrid_user'), get_option('sendgrid_pwd'));
+
+					// create new email
+					$email = new SendGrid\Email();
+
+					// add recipient email
+					$email->addTo($_GET['email'], $_GET['name'])
+						  ->setFrom("wppc@".str_replace('www.', '', $_SERVER['SERVER_NAME']))
+						  ->setFromName(get_bloginfo())
+						  ->setSubject($contestEmails['admitted-subject'])
+						  ->setHtml($contestEmails['admitted-body']);
+
+					// send email to user
+					$sendgrid->send($email);
+
+
 					/*// init mail
 					include_once(WPPC_DIR.'php/PHPMailer/PHPMailerAutoload.php');					
 					$mail = new PHPMailer();
@@ -1073,7 +1105,7 @@
 		    {
 		    	global $wpdb;
 
-		    	$newItems = $wpdb->get_var("SELECT COUNT(visible) FROM $this->contestEntriesTable WHERE visible=0");
+		    	$newItems = $wpdb->get_var("SELECT COUNT(visible) FROM $this->contestEntriesTable WHERE visible=0 AND contest_id=".$_GET['contest']);
 				
 				if ($newItems) $status = (!empty($_REQUEST['status']) ? $_REQUEST['status'] : 'new');
 					else $status = (!empty($_REQUEST['status']) ? $_REQUEST['status'] : 'publish');
