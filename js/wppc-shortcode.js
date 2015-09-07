@@ -1,4 +1,5 @@
 jQuery(document).ready(function($) {
+
 	$( "#contest-tabs" ).tabs();
 
 	$("#rules-tabs").tabs();

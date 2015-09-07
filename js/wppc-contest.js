@@ -1,4 +1,27 @@
 jQuery(document).ready(function($) {
+
+	var $dialogWindow 			= $("#modal-content");
+	var spinner 				= '<span class="spinner spinner-center is-active"></span>';
+
+
+	$dialogWindow.dialog({
+		'width'			: $(window).innerWidth()*0.7,
+	    'dialogClass'   : 'wp-dialog',           
+	    'draggable'		: false,
+	    'resizable'		: false,
+	    'modal'         : true,
+	    'autoOpen'      : false, 
+	    'closeOnEscape' : true,
+	    'open': function() {
+		    $('body').css('overflow', 'hidden');
+		},
+		'close': function() {
+			$dialogWindow.dialog('close');
+		    $('body').css('overflow', 'auto');
+		    $dialogWindow.html(spinner);
+		},
+	});
+
 	
 	// ADD/EDIT CONTEST TABS
 	$("#tabs").tabs();
@@ -10,68 +33,45 @@ jQuery(document).ready(function($) {
 
 
 	// VIEW IPs
-	$('.row-actions').on('click', '.wppc-view', function(event) {
+	$('.row-actions').on('click', '.voters', function(event) {
 		event.preventDefault();
 
-		$.ajax({
-	 		url: wppcAdminContest.ajaxurl,
-	 		type: 'POST',
-	 		dataType: 'html',
-	 		data: {action: 'view-photo-voters', photoid: $(this).attr('data-photo-id')},
-	 	})
-	 	.done(function(data) {
-	 		$('#wppc-overlay').show().html(data);
-	 		console.log(data);
-	 		console.log("success");
-	 	})
-	 	.fail(function() {
-	 		console.log("error");
-	 	})
-	 	.always(function() {
-	 		console.log("complete");
-	 	});
+		var photoID = $(this).find('a').attr('data-photo-id');
+
+		$dialogWindow.dialog({
+			'title'		: "View voters IPs",
+			'height'	: 380,
+		});
+		$dialogWindow.dialog('open');
+
+
+		$.get(ajaxurl, {action: 'view-photo-voters', photoid: photoID}, function(data) {
+			$dialogWindow.html(data);
+		});
 	});
 
 
 	/**
-	 * AJAX CALL TO GET PHOTO SPECS
+	 * VIEW PHOTO SPECS
 	 */
-	 $('table').on('click', '.view-photo-details', function(event) {
-	 	event.preventDefault();
+	$('.wrap').on('click', '.view-photo-details', function(event) {
+		event.preventDefault();
 
-	 	$.ajax({
-	 		url: wppcAdminContest.ajaxurl,
-	 		type: 'POST',
-	 		dataType: 'html',
-	 		data: {action: 'view-photo-specs', photo: $(this).attr('href'), photoid: $(this).attr('data-photo-id')},
-	 	})
-	 	.done(function(data) {
-	 		$('#wppc-overlay').show().html(data);
-	 		console.log(data);
-	 		console.log("success");
-	 	})
-	 	.fail(function() {
-	 		console.log("error");
-	 	})
-	 	.always(function() {
-	 		console.log("complete");
-	 	});
+		// get photo id
+		var photoID = $(this).attr('data-photo-id');
+
+		// open modal windows
+		$dialogWindow.dialog({
+			'title'		: "View voters IPs",
+			'height'	: $(window).innerHeight()*0.7,
+		});
+		$dialogWindow.dialog('open');
+
+		// get photo details
+		$.get(ajaxurl, {action: 'view-photo-specs', photo: photoID}, function(data) {
+			$dialogWindow.html(data);
+		});
 	 });
-	
-
-	/**
-	 * HIDE OVERLAY
-	 */
-	$(document).on('keydown', function(e) {
-    	if (e.keyCode === 27) // ESC
-    		$('#wppc-overlay').hide();
-	});
-
-	$('#wppc-overlay').on('click', '.dashicons-no', function(event) {
-		event.preventDefault();
-		$('#wppc-overlay').hide();
-	});
-
 
 
 	/**
@@ -80,30 +80,9 @@ jQuery(document).ready(function($) {
 	$('#send-admit-test').click(function(event) {
 		event.preventDefault();
 
-		$.ajax({
-			url: wppcAdminContest.ajaxurl,
-			type: 'POST',
-			dataType: 'html',
-			data:
-			{
-				action: 'test-admit-email',
-				subject: $('#admitted-subject').val(),
-				body: $('#admitted-body').val()
-			},
-		})
-		.done(function(data) {
+		$.post(ajaxurl, {action: 'test-admit-email', subject: $('#admitted-subject').val(), body: $('#admitted-body').val()}, function(data, textStatus, xhr) {
 			$('#admit-result').html(data);
-			console.log(data);
-			console.log("success");
-		})
-		.fail(function(xhr) {
-			console.log("error");
-			console.log(xhr);
-		})
-		.always(function() {
-			console.log("complete");
-		});
-		
+		});		
 	});
 	
 });

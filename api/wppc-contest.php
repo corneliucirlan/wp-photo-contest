@@ -4,12 +4,10 @@
 	if (!defined('ABSPATH')) die;
 	
 	// PRE-REQUIREMENTS
-	//require_once(ABSPATH.'wp-admin/includes/template.php');
 	if (!class_exists('WP_List_Table'))
 	    require_once(ABSPATH.'wp-admin/includes/class-wp-list-table.php');
-	//if (!class_exists('WP_Screen'))
-	//	require_once( ABSPATH.'wp-admin/includes/screen.php');
 
+	// CREATE CLASS
 	if (!class_exists('WPPCContest')):
 		class WPPCContest extends WP_List_Table
 		{
@@ -48,6 +46,11 @@
 			 * CONTEST VOTES TABLE
 			 */
 			private $contestVotesTable;
+
+			/**
+			 * PHOTOS FOLDERS
+			 */
+			private $folders;
 	
 
 			/**
@@ -57,16 +60,24 @@
 			{
 				global $status, $page, $wpdb;
 
+				$wpDir = wp_upload_dir();
+				$contestID = isset($_GET['contest']) ? $_GET['contest'] : 1;
+
 				// initialize params
 				$this->contestsTable = $wpdb->prefix.'wppc_contests_all';
 				$this->contestEntriesTable = $wpdb->prefix.'wppc_contests_entries';
 				$this->contestVotesTable = $wpdb->prefix.'wppc_contests_votes';
+				$this->folders = array(
+					'raw'		=> $wpDir['baseurl'].'/wppc-photos/wppc-photos-'.$contestID.'/raw/',
+					'full'		=> $wpDir['baseurl'].'/wppc-photos/wppc-photos-'.$contestID.'/full/',
+					'medium'	=> $wpDir['baseurl'].'/wppc-photos/wppc-photos-'.$contestID.'/medium/',
+					'thumb'		=> $wpDir['baseurl'].'/wppc-photos/wppc-photos-'.$contestID.'/thumbs/',
+				);
 
 				// set parent defaults
 				parent::__construct(array(
 					'singular'	=> 'Photo',
 					'plural'	=> 'Photos',
-					'screen'	=> 'photos-list',
 					'ajax'		=> false,
 				));
 
@@ -76,13 +87,15 @@
 				// add menu page
 				add_action('admin_menu', array($this, 'renderMenuItems')); 
 				
-
 				// SAVE/UPDATE NEW CONTEST IN THE DATABASE
 				add_action('admin_post_save-wp-photo-contest', array($this, 'saveWPPContest'));
 				do_action("admin_post_save-wp-photo-contest");
 
-				// ADD HTML TAGS TO ALLOWED LIST
-				add_filter('wp_kses_allowed_html', array($this, 'allowedHTMLTags'), 1, 1);
+				// AJAX CALL TO GET PHOTO VOTERS
+				add_action('wp_ajax_view-photo-voters', array($this, 'viewPhotoVoters'));
+
+				// AJAX CALL GET GET PHOTO SPECS
+				add_action('wp_ajax_view-photo-specs', array($this, 'viewPhotoSpecs'));
 			}
 
 
@@ -108,6 +121,10 @@
 				wp_enqueue_script('jquery-ui-core','','','',true);
 				wp_enqueue_script('jquery-ui-tabs','','','',true);
 				wp_enqueue_script('wppc-contest-js', WPPC_URI.'js/wppc-contest.js', array('jquery'), WPPC_VERSION, true);
+
+				// jquery ui
+	    		wp_enqueue_style('wp-jquery-ui-dialog');
+				wp_enqueue_script('jquery-ui-dialog');
 			}
 
 
@@ -158,6 +175,7 @@
 			private function viewContestPhotos()
 			{
 				?>
+				<div id="modal-content" title="Basic dialog" class="hidden"></div>
 				<!-- Forms are NOT created automatically, so you need to wrap the table in one to use features like bulk actions -->
 				<form id="photos" method="get" action="">
 
@@ -368,7 +386,7 @@
 												if (!isset($_GET['contest']))
 													wp_editor($_POST && $_POST['about'] ? $_POST['about'] : "", "about");
 												else
-													wp_editor($contest->contest_about, "about");
+													wp_editor(($contest->contest_about), "about");
 												?>
 											</td>
 										</tr>
@@ -381,7 +399,7 @@
 												if (!isset($_GET['contest']))
 													wp_editor($_POST && $_POST['photos'] ? $_POST['photos'] : "", "photos");
 												else
-													wp_editor($contest->contest_photo_gallery, "photos");
+													wp_editor($this->formatContent($contest->contest_photo_gallery), "photos");
 												?>
 											</td>
 										</tr>
@@ -394,7 +412,7 @@
 												if (!isset($_GET['contest']))
 													wp_editor($_POST && $_POST['winners'] ? $_POST['winners'] : "", "winners");
 												else
-													wp_editor($contestWinners['text'], "winners");
+													wp_editor($this->formatContent($contestWinners['text']), "winners");
 												?>
 											</td>
 										</tr>
@@ -407,7 +425,7 @@
 												if (!isset($_GET['contest']) || empty($contestRules['en']))
 													wp_editor($_POST && $_POST['rules-en'] ? $_POST['rules-en'] : "", "rules-en");
 												else
-													wp_editor($contestRules['en'], "rules-en");
+													wp_editor($this->formatContent($contestRules['en']), "rules-en");
 												?>
 											</td>
 										</tr>
@@ -420,7 +438,7 @@
 												if (!isset($_GET['contest']) || empty($contestRules['ro']))
 													wp_editor($_POST && $_POST['rules-ro'] ? $_POST['rules-ro'] : "", "rules-ro");
 												else
-													wp_editor($contestRules['ro'], "rules-ro");
+													wp_editor($this->formatContent($contestRules['ro']), "rules-ro");
 												?>
 											</td>
 										</tr>
@@ -433,7 +451,7 @@
 												if (!isset($_GET['contest']))
 													wp_editor($_POST && $_POST['prizes'] ? $_POST['prizes'] : "", "prizes");
 												else
-													wp_editor($contest->contest_prizes, "prizes");
+													wp_editor($this->formatContent($contest->contest_prizes), "prizes");
 												?>
 											</td>
 										</tr>
@@ -446,7 +464,7 @@
 												if (!isset($_GET['contest']))
 													wp_editor($_POST && $_POST['entry-form'] ? $_POST['entry-form'] : "", "entry-form");
 												else
-													wp_editor($contest->contest_entry_form, "entry-form");
+													wp_editor($this->formatContent($contest->contest_entry_form), "entry-form");
 												?>
 											</td>
 										</tr>
@@ -459,7 +477,7 @@
 												if (!isset($_GET['contest']))
 													wp_editor($_POST && $_POST['contact'] ? $_POST['contact'] : "", "contact");
 												else
-													wp_editor($contest->contest_contact, "contact");
+													wp_editor($this->formatContent($contest->contest_contact), "contact");
 												?>
 											</td>
 										</tr>
@@ -478,7 +496,7 @@
 												if (!isset($_GET['contest']))
 													wp_editor($_POST && $_POST['sponsors'] ? $_POST['sponsors'] : "", "sponsors");
 												else
-													wp_editor($contest->contest_sidebar, "sponsors");
+													wp_editor($this->formatContent($contest->contest_sidebar), "sponsors");
 												?>
 											</td>
 										</tr>
@@ -504,7 +522,7 @@
 											if (!isset($_GET['contest']))
 												wp_editor($_POST && $_POST['admitted-body'] ? $_POST['admitted-body'] : "", "admitted-body");
 											else
-												wp_editor($contestEmails['admitted-body'], "admitted-body");
+												wp_editor($this->formatContent($contestEmails['admitted-body']), "admitted-body");
 											?>
 											<input type="submit" class="button-secondary" name="send-admit-test" id="send-admit-test" value="Send Test Email" />
 											<span id="admit-result"></span>
@@ -731,79 +749,79 @@
 				global $wpdb;
 
 				if ($_POST):
-				// CREATE CONTEST DATA ARRAY
-				$contestData = array(
-					'contest_name' 					=> esc_attr($_POST['name']),
-					'start_date' 					=> $_POST['start-date'],
-					'end_registration' 				=> $_POST['end-registration'],
-					'end_vote' 						=> $_POST['end-vote'],
-					'end_date' 						=> $_POST['end-date'],
-					'photos_allowed' 				=> isset($_POST['photos-allowed']) ? absint($_POST['photos-allowed']) : 0,
-					'photos_mobile_allowed' 		=> isset($_POST['photos-mobile-allowed']) ? absint($_POST['photos-mobile-allowed']) : 0,
-					'votes_allowed' 				=> isset($_POST['votes-allowed']) ? absint($_POST['votes-allowed']) : 0,
-					'first_point' 					=> isset($_POST['first-point']) ? absint($_POST['first-point']) : 0,
-					'second_point' 					=> isset($_POST['second-point']) ? absint($_POST['second-point']) : 0,
-					'third_point' 					=> isset($_POST['third-point']) ? absint($_POST['third-point']) : 0,
-					'forth_point' 					=> isset($_POST['forth-point']) ? absint($_POST['forth-point']) : 0,
-					'fifth_point' 					=> isset($_POST['fifth-point']) ? absint($_POST['fifth-point']) : 0,
-					'contest_social_description' 	=> isset($_POST['social-description']) ? $_POST['social-description'] : '',
-					'contest_about' 				=> isset($_POST['about']) ? $_POST['about'] : '',
-					'contest_photo_gallery'			=> $_POST['photos'],
-					'contest_winners' 				=> serialize(array(
-															'text'					=> isset($_POST['winners']) ? $_POST['winners'] : "",
-															'first-winner'			=> isset($_POST['first-winner']) ? $_POST['first-winner'] : 0,
-															'second-winner'			=> isset($_POST['second-winner']) ? $_POST['second-winner'] : 0,
-															'third-winner'			=> isset($_POST['third-winner']) ? $_POST['third-winner'] : 0,
-															'special-winner'		=> isset($_POST['special-winner']) ? $_POST['special-winner'] : 0,
-															'our-favorites'			=> isset($_POST['our-favorites']) ? $_POST['our-favorites'] : 0,
-														)),
-					'contest_rules' 				=> serialize(array(
-															'en'	=> isset($_POST['rules-en']) ? $_POST['rules-en'] : "",
-															'ro'	=> isset($_POST['rules-ro']) ? $_POST['rules-ro'] : "",
-														)),
-					'contest_prizes' 				=> isset($_POST['prizes']) ? $_POST['prizes'] : "",
-					'contest_entry_form' 			=> isset($_POST['entry-form']) ? $_POST['entry-form'] : '',
-					'contest_contact' 				=> isset($_POST['contact']) ? $_POST['contact'] : "",
-					'contest_sidebar' 				=> isset($_POST['sponsors']) ? $_POST['sponsors'] : "",
-					'contest_emails' 				=> serialize(array(
-															'admitted-subject'	=> isset($_POST['admitted-subject']) ? esc_attr($_POST['admitted-subject']) : "",
-															'admitted-body'		=> isset($_POST['admitted-body']) ? $_POST['admitted-body'] : "",
-														)),
-				);
+					// CREATE CONTEST DATA ARRAY
+					$contestData = array(
+						'contest_name' 					=> esc_attr($_POST['name']),
+						'start_date' 					=> $_POST['start-date'],
+						'end_registration' 				=> $_POST['end-registration'],
+						'end_vote' 						=> $_POST['end-vote'],
+						'end_date' 						=> $_POST['end-date'],
+						'photos_allowed' 				=> isset($_POST['photos-allowed']) ? absint($_POST['photos-allowed']) : 0,
+						'photos_mobile_allowed' 		=> isset($_POST['photos-mobile-allowed']) ? absint($_POST['photos-mobile-allowed']) : 0,
+						'votes_allowed' 				=> isset($_POST['votes-allowed']) ? absint($_POST['votes-allowed']) : 0,
+						'first_point' 					=> isset($_POST['first-point']) ? absint($_POST['first-point']) : 0,
+						'second_point' 					=> isset($_POST['second-point']) ? absint($_POST['second-point']) : 0,
+						'third_point' 					=> isset($_POST['third-point']) ? absint($_POST['third-point']) : 0,
+						'forth_point' 					=> isset($_POST['forth-point']) ? absint($_POST['forth-point']) : 0,
+						'fifth_point' 					=> isset($_POST['fifth-point']) ? absint($_POST['fifth-point']) : 0,
+						'contest_social_description' 	=> isset($_POST['social-description']) ? $_POST['social-description'] : '',
+						'contest_about' 				=> isset($_POST['about']) ? wp_kses($_POST['about'], $this->expanded_alowed_tags()) : '',
+						'contest_photo_gallery'			=> wp_kses($_POST['photos'], $this->expanded_alowed_tags()),
+						'contest_winners' 				=> serialize(array(
+																'text'					=> isset($_POST['winners']) ? $_POST['winners'] : "",
+																'first-winner'			=> isset($_POST['first-winner']) ? $_POST['first-winner'] : 0,
+																'second-winner'			=> isset($_POST['second-winner']) ? $_POST['second-winner'] : 0,
+																'third-winner'			=> isset($_POST['third-winner']) ? $_POST['third-winner'] : 0,
+																'special-winner'		=> isset($_POST['special-winner']) ? $_POST['special-winner'] : 0,
+																'our-favorites'			=> isset($_POST['our-favorites']) ? $_POST['our-favorites'] : 0,
+															)),
+						'contest_rules' 				=> serialize(array(
+																'en'	=> isset($_POST['rules-en']) ? wp_kses($_POST['rules-en'], $this->expanded_alowed_tags()) : "",
+																'ro'	=> isset($_POST['rules-ro']) ? wp_kses($_POST['rules-ro'], $this->expanded_alowed_tags()) : "",
+															)),
+						'contest_prizes' 				=> isset($_POST['prizes']) ? wp_kses($_POST['prizes'], $this->expanded_alowed_tags()) : "",
+						'contest_entry_form' 			=> isset($_POST['entry-form']) ? wp_kses($_POST['entry-form'], $this->expanded_alowed_tags()) : '',
+						'contest_contact' 				=> isset($_POST['contact']) ? wp_kses($_POST['contact'], $this->expanded_alowed_tags()) : "",
+						'contest_sidebar' 				=> isset($_POST['sponsors']) ? wp_kses($_POST['sponsors'], $this->expanded_alowed_tags()) : "",
+						'contest_emails' 				=> serialize(array(
+																'admitted-subject'	=> isset($_POST['admitted-subject']) ? esc_attr($_POST['admitted-subject']) : "",
+																'admitted-body'		=> isset($_POST['admitted-body']) ? $_POST['admitted-body'] : "",
+															)),
+					);
 
-				// INSERT|UPDATE TABLE
-				if (isset($_POST['addNewContest'])):
-					$id = 0;
-					
-					// UPDATE CONTEST
-					if (isset($_GET['contest'])):
-							$wpdb->update($this->contestsTable, $contestData, array('id'=>$_GET['contest']));
-							$id = $_GET['contest'];
+					// INSERT|UPDATE TABLE
+					if (isset($_POST['addNewContest'])):
+						$id = 0;
 						
-						// INSERT NEW CONTEST
-						else:
-							$wpdb->insert($this->contestsTable, $contestData);
-							$id = $wpdb->insert_id;
-					endif;
+						// UPDATE CONTEST
+						if (isset($_GET['contest'])):
+								$wpdb->update($this->contestsTable, $contestData, array('id'=>$_GET['contest']));
+								$id = $_GET['contest'];
+							
+							// INSERT NEW CONTEST
+							else:
+								$wpdb->insert($this->contestsTable, $contestData);
+								$id = $wpdb->insert_id;
+						endif;
 
-					// create folders for user uploads
-					$upload_dir = wp_upload_dir();
-					$dir = $upload_dir['basedir'].'/wppc-photos/wppc-photos-'.$id.'/';
-					if (!is_dir($dir))
-						wp_mkdir_p($dir);
-					$dir = $upload_dir['basedir'].'/wppc-photos/wppc-photos-'.$id.'/raw/';
-					if (!is_dir($dir))
-						wp_mkdir_p($dir);
-					$dir = $upload_dir['basedir'].'/wppc-photos/wppc-photos-'.$id.'/full/';
-					if (!is_dir($dir))
-						wp_mkdir_p($dir);
-					$dir = $upload_dir['basedir'].'/wppc-photos/wppc-photos-'.$id.'/medium/';
-					if (!is_dir($dir))
-						wp_mkdir_p($dir);
-					$dir = $upload_dir['basedir'].'/wppc-photos/wppc-photos-'.$id.'/thumbs/';
-					if (!is_dir($dir))
-						wp_mkdir_p($dir);
-				endif;
+						// create folders for user uploads
+						$upload_dir = wp_upload_dir();
+						$dir = $upload_dir['basedir'].'/wppc-photos/wppc-photos-'.$id.'/';
+						if (!is_dir($dir))
+							wp_mkdir_p($dir);
+						$dir = $upload_dir['basedir'].'/wppc-photos/wppc-photos-'.$id.'/raw/';
+						if (!is_dir($dir))
+							wp_mkdir_p($dir);
+						$dir = $upload_dir['basedir'].'/wppc-photos/wppc-photos-'.$id.'/full/';
+						if (!is_dir($dir))
+							wp_mkdir_p($dir);
+						$dir = $upload_dir['basedir'].'/wppc-photos/wppc-photos-'.$id.'/medium/';
+						if (!is_dir($dir))
+							wp_mkdir_p($dir);
+						$dir = $upload_dir['basedir'].'/wppc-photos/wppc-photos-'.$id.'/thumbs/';
+						if (!is_dir($dir))
+							wp_mkdir_p($dir);
+					endif;
 				endif;
 			}
 
@@ -815,7 +833,7 @@
 			{
 				$columns = array(
 		            'cb'				=> '<input type="checkbox" />', //Render a checkbox instead of text
-//		            'photo_id'			=> __('Thumb'),
+		            'photo_id'			=> __('Thumb'),
 		            'competitor_photo'	=> __('Filename'),
 		            'competitor_name'	=> __('Author'),
 		            'photo_name'		=> __('Photo name'),
@@ -841,11 +859,7 @@
 			 */
 			public function column_cb($item)
 			{
-				return sprintf(
-		            '<input type="checkbox" name="%1$s[]" value="%2$s" />',
-		            /*$1%s*/ $this->_args['singular'],  //Let's simply repurpose the table's singular label ("movie")
-		            /*$2%s*/ $item['id']                //The value of the checkbox should be the record's id
-		        );
+				return sprintf('<input type="checkbox" name="%1$s[]" value="%2$s" />', $this->_args['singular'], $item['id']);
 			}
 
 
@@ -854,11 +868,7 @@
 			 */
 			public function column_photo_id($item)
 			{
-				$wpDir = wp_upload_dir();
-				$contestDir = $wpDir['baseurl'].'/wppc-photos/wppc-photos-'.$_GET['contest'].'/';
-				$contestPath = $wpDir['path'].'/wppc-photos/wppc-photos-'.$_GET['contest'].'/';
-
-				return sprintf('<img style="height: 60px" src="%s" />', $contestDir.'thumbs/'.$item['competitor_photo']);
+				return sprintf('<a target="_blank" href="%s"><img style="width: 60px" src="%s" /></a>', $this->folders['raw'].$item['competitor_photo'], $this->folders['thumb'].$item['competitor_photo']);
 			}
 
 
@@ -868,17 +878,13 @@
 			public function column_competitor_photo($item)
 			{
 				global $wpdb;
-
-				$wpDir = wp_upload_dir();
-				$contestDir = $wpDir['baseurl'].'/wppc-photos/wppc-photos-'.$_GET['contest'].'/';
-				$contestPath = $wpDir['path'].'/wppc-photos/wppc-photos-'.$_GET['contest'].'/';
-
+				
 				$newItems = $wpdb->get_var("SELECT COUNT(visible) FROM $this->contestEntriesTable WHERE visible=0 AND contest_id=".$_GET['contest']);
 
-				$photo .= '<a class="view-photo-details" href="'.$contestDir.'raw/'.$item['competitor_photo'].'" data-photo-id="'.
+				$photo = '<a class="view-photo-details" href="'.$this->folders['raw'].$item['competitor_photo'].'" data-photo-id="'.
 					$item['photo_id'].'" target="_blank">'.$item['competitor_photo'].'</a>';
 				
-				if ($item['visible' == self::PHOTO_APPROVED]):
+				if ($item['visible'] == self::PHOTO_APPROVED):
 					$photo .= '<br/>'.$item['photo_mobile'] == self::PHOTO_MOBILE_DEVICE ?'<br/>MOBILE' : 'PRO CAMERA';
 					$photo .= ' ('.$item['votes'].' ';
 					$photo .= $item['votes'] != 1 ? 'votes)' : 'vote)';
@@ -892,9 +898,9 @@
 						);
 					elseif ((!$newItems && !isset($_GET['status']) || ($newItems && isset($_GET['status']) && $_GET['status'] == 'publish')))
 							$actions = array(
-								'download-raw'	=> sprintf('<a download href="%s">Download raw</a>', $contestDir.'raw/'.$item['competitor_photo']),
-								'download-copy'	=> sprintf('<a download href="%s">Download &copy;</a>', $contestDir.'medium/'.$item['competitor_photo']),
-								'voters'		=> sprintf('<a href="#" class="wppc-view" data-photo-id="%s">View IPs</a>', $item['photo_id']),
+								'download-raw'	=> sprintf('<a download href="%s">Download raw</a>', $this->folders['raw'].$item['competitor_photo']),
+								'download-copy'	=> sprintf('<a download href="%s">Download &copy;</a>', $this->folders['medium'].$item['competitor_photo']),
+								'voters'		=> sprintf('<a href="#" data-photo-id="%s">View IPs</a>', $item['photo_id']),
 							);
 						else
 							$actions = array(
@@ -1127,56 +1133,145 @@
 
 
 		    /**
-		     * CALLBACK FUNCTION TO ADD HTML TAGS TO ALLOWED LIST
+		     * CALLBACK FUNCTION TO VIEW PHOTO VOTERS
 		     */
-		    public function allowedHTMLTags($allowedposttags)
-		    {
-		    	$allowedposttags['iframe'] = array(
+		  	public function viewPhotoVoters()
+			{
+				global $wpdb;
+
+				// get photo id;
+				$photoID = $_GET['photoid'];
+
+				// get voters
+				$votes = $wpdb->get_results("SELECT * FROM $this->contestVotesTable WHERE photo_id=".$photoID);
+
+				// create ajax response
+				$ajaxResponse = '';
+
+				$ajaxResponse .= '<div>';
+					foreach ($votes as $vote):
+						$ajaxResponse .= '<p style="text-align: center;">IP <a href="http://whatismyipaddress.com/ip/'.long2ip($vote->vote_ip).'" target="_blank">'.long2ip($vote->vote_ip).'</a> voted '.$vote->vote_number.' times</p>';
+					endforeach;
+				$ajaxResponse .= '</div>';
+
+				// return ajax response and terminate
+				die($ajaxResponse);
+			}
+
+
+			/**
+			 * CALLBACK FUNCTION TO VIEW PHOTO SPECS
+			 */
+			public function viewPhotoSpecs()
+			{
+				global $wpdb;
+
+				// get photo url
+				$photo = $_GET['photo'];
+				
+				// get photo upload date from db
+				$dbPhoto = $wpdb->get_row("SELECT upload_date, contest_id, competitor_photo FROM $this->contestEntriesTable WHERE photo_id=$photo");
+
+				$photo = $this->folders['raw'].$dbPhoto->competitor_photo;
+
+				// get photo specs
+				$photoDetails = exif_read_data($photo);
+				$primaryDetails = array('FileName', 'DateTimeOriginal', 'Make', 'Model', 'MimeType', 'ExposureTime', 'FNumber', 'ISOSpeedRatings', 'ShutterSpeedValue', 'Flash');
+
+				// create ajax response
+				$ajaxResponse = '';
+				$ajaxResponse .= '<div>';
+					$ajaxResponse .= '<div class="entered-photo" style="display: table-cell; width: 50%; vertical-align: top; padding: 3rem;">';
+						$ajaxResponse .= '<img src="'.$photo.'" style="max-width: 100%;" />';
+					$ajaxResponse .= '</div>';
+					$ajaxResponse .= '<div class="details-photo" style="display: table-cell; width: 50%; vertical-align: top; padding: 3rem;">';
+						$ajaxResponse .= '<p>Filename: '.$photoDetails['FileName'].'</p>';
+						$ajaxResponse .= '<p>Dimensions: '.$photoDetails['COMPUTED']['Width'].'px x '.$photoDetails['COMPUTED']['Height'].'px</p>';
+						$ajaxResponse .= '<p>Original DateTime: '.$photoDetails['DateTimeOriginal'].'</p>';
+						$ajaxResponse .= '<p>Upload DateTime: '.$dbPhoto->upload_date.'</p>';
+						$ajaxResponse .= '<p>Camera: '.$photoDetails['Make'].'</p>';
+						$ajaxResponse .= '<p>Model: '.$photoDetails['Model'].'</p>';
+						$ajaxResponse .= '<p>File Type: '.$photoDetails['MimeType'].'</p>';
+						$ajaxResponse .= '<p>Exposure: '.$photoDetails['ExposureTime'].'</p>';
+						$ajaxResponse .= '<p>FNumber: '.$photoDetails['FNumber'].'</p>';
+						$ajaxResponse .= '<p>ISO: '.$photoDetails['ISOSpeedRatings'].'</p>';
+						$ajaxResponse .= '<p>Shutter: '.$photoDetails['ShutterSpeedValue'].'</p>';
+						$ajaxResponse .= '<p>Flash: '.$photoDetails['Flash'].'</p>';
+					$ajaxResponse .= '</div>';
+				$ajaxResponse .= '</div>';
+
+
+				// return ajax response and terminate
+				die($ajaxResponse);
+			}
+
+
+		    /**
+		     * EXPAND ALLOWED HTML TAGS
+		     */
+		    function expanded_alowed_tags() 
+			{
+				$my_allowed = wp_kses_allowed_html('post');
+				// iframe
+				$my_allowed['iframe'] = array(
 					'src'             => array(),
 					'height'          => array(),
 					'width'           => array(),
 					'frameborder'     => array(),
 					'allowfullscreen' => array(),
-				);
-				
+					);
 				// form fields - input
-				$allowedposttags['input'] = array(
+				$my_allowed['input'] = array(
 					'class' => array(),
 					'id'    => array(),
 					'name'  => array(),
 					'value' => array(),
 					'type'  => array(),
-				);
-				
+					);
 				// select
-				$allowedposttags['select'] = array(
+				$my_allowed['select'] = array(
 					'class'  => array(),
 					'id'     => array(),
 					'name'   => array(),
 					'value'  => array(),
 					'type'   => array(),
-				);
-				
+					);
 				// select options
-				$allowedposttags['option'] = array(
+				$my_allowed['option'] = array(
 					'selected' => array(),
-				);
-				
+					);
 				// style
-				$allowedposttags['style'] = array(
+				$my_allowed['style'] = array(
 					'types' => array(),
-				);
+					);
 
-				return $allowedposttags;
 				// table
-				$allowedposttags['table'] = array(
+				$my_allowed['table'] = array(
 					'thead' => array(),
 					'tbody' => array(),
 					'tfoot' => array(),
 					'tr'	=> array(),
 					'td'	=> array(),
 					);
-		    }
+
+				return $my_allowed;
+			}
+
+
+			/**
+			 * FORMAT CONTENT
+			 */
+			private function formatContent($content)
+			{
+				// breaks to new lines
+				$content = nl2br($content);
+
+				// strip slashes
+				$content = stripslashes($content);
+
+				// return formatted content
+				return $content;
+			}
 			
 
 		} // END CLASS

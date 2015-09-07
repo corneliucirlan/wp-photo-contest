@@ -535,8 +535,6 @@
 				$contestWinners = unserialize($contest->contest_winners);
 				?>
 
-				<!-- <h2 style="text-align: center;"><?php echo $contest->contest_name ?></h2> -->
-
 				<div id="wppc-contest">
 					<div id="wppc-main">
 						<div id="contest-tabs" style="display: inline;">
