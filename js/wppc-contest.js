@@ -57,8 +57,13 @@ jQuery(document).ready(function($) {
 	$('.wrap').on('click', '.view-photo-details', function(event) {
 		event.preventDefault();
 
-		// get photo id
-		var photoID = $(this).attr('data-photo-id');
+		// set data
+		var data = {
+			action: 'view-photo-specs',
+			photo: $(this).attr('data-photo-id'),
+			nonce: wppc.nonce,
+			photoURL: wppc.photoURL,
+		};
 
 		// open modal windows
 		$dialogWindow.dialog({
@@ -68,7 +73,7 @@ jQuery(document).ready(function($) {
 		$dialogWindow.dialog('open');
 
 		// get photo details
-		$.get(ajaxurl, {action: 'view-photo-specs', photo: photoID}, function(data) {
+		$.get(ajaxurl, data, function(data) {
 			$dialogWindow.html(data);
 		});
 	 });

@@ -4,8 +4,11 @@
 	if (!defined('ABSPATH')) die;
 	
 	// PRE-REQUIREMENTS
+	require_once(ABSPATH.'wp-admin/includes/template.php');
 	if (!class_exists('WP_List_Table'))
 	    require_once(ABSPATH.'wp-admin/includes/class-wp-list-table.php');
+	if (!class_exists('WP_Screen'))
+		require_once( ABSPATH.'wp-admin/includes/screen.php');
 
 	// CREATE CLASS
 	if (!class_exists('WPPCContest')):
@@ -51,6 +54,11 @@
 			 * PHOTOS FOLDERS
 			 */
 			private $folders;
+
+			/**
+			 * NONCE VARIABLE
+			 */
+			private $nonce = 'wppc-nonce';
 	
 
 			/**
@@ -78,6 +86,7 @@
 				parent::__construct(array(
 					'singular'	=> 'Photo',
 					'plural'	=> 'Photos',
+					'screen'	=> 'photos-list',
 					'ajax'		=> false,
 				));
 
@@ -96,6 +105,9 @@
 
 				// AJAX CALL GET GET PHOTO SPECS
 				add_action('wp_ajax_view-photo-specs', array($this, 'viewPhotoSpecs'));
+
+				// AJAX CALL TO TEST ADMIT EMAIL
+				add_action('wp_ajax_test-admit-email', array($this, 'testAdmitEmail'));
 			}
 
 
@@ -125,6 +137,11 @@
 				// jquery ui
 	    		wp_enqueue_style('wp-jquery-ui-dialog');
 				wp_enqueue_script('jquery-ui-dialog');
+
+				wp_localize_script('wppc-contest-js', 'wppc', array(
+					'nonce' 	=> wp_create_nonce($this->nonce),
+					'photoURL'	=> urlencode($this->folders['raw']),
+				));
 			}
 
 
@@ -224,7 +241,7 @@
 						$validEndDate = true;
 				
 				// get current contest photos
-				$photos = isset($_GET['contest']) ? $wpdb->get_results("SELECT * FROM $this->contestEntriesTable WHERE contest_id='".$_GET['contest']."' visible=".self::PHOTO_APPROVED) : array();
+				$photos = isset($_GET['contest']) ? $wpdb->get_results("SELECT * FROM $this->contestEntriesTable WHERE contest_id='".$_GET['contest']."' AND visible=".self::PHOTO_APPROVED) : array();
 
 				// unserialize data
 				$contestWinners = isset($_GET['contest']) && $contest->contest_winners != '' ? unserialize($contest->contest_winners) : array();
@@ -885,7 +902,7 @@
 					$item['photo_id'].'" target="_blank">'.$item['competitor_photo'].'</a>';
 				
 				if ($item['visible'] == self::PHOTO_APPROVED):
-					$photo .= '<br/>'.$item['photo_mobile'] == self::PHOTO_MOBILE_DEVICE ?'<br/>MOBILE' : 'PRO CAMERA';
+					$photo .= '<br/>'.$item['photo_mobile'] == self::PHOTO_MOBILE_DEVICE ?'<br/>MOBILE' : '<br/>PRO CAMERA';
 					$photo .= ' ('.$item['votes'].' ';
 					$photo .= $item['votes'] != 1 ? 'votes)' : 'vote)';
 				endif;
@@ -1045,24 +1062,6 @@
 
 					// send email to user
 					$sendgrid->send($email);
-
-
-					/*// init mail
-					include_once(WPPC_DIR.'php/PHPMailer/PHPMailerAutoload.php');					
-					$mail = new PHPMailer();
-					$mail->IsSMTP();
-					$mail->SMTPDebug = 0; // 1 tells it to display SMTP errors and messages, 0 turns off all errors and messages, 2 prints messages only.
-					$mail->Host = ini_get('SMTP');
-					$mail->IsHTML(true);
-					$mail->From = "wppc@".str_replace('www.', '', $_SERVER['SERVER_NAME']);
-					$mail->FromName = get_bloginfo();
-					$mail->Subject = $contestEmails['admitted-subject'];
-					$mail->AddCC($_GET['email'], $_GET['name']);
-					$mail->Body = $_POST['admitted-body'];
-					
-					// send mail
-					if (!$mail->Send()) echo $mail->ErrorInfo();
-					$mail->ClearAllRecipients();*/
 				endif;
 
 
@@ -1166,13 +1165,17 @@
 			{
 				global $wpdb;
 
+				// security check
+				if (!wp_verify_nonce($_GET['nonce'], $this->nonce))
+					die(__("Security check failed"));
+
 				// get photo url
 				$photo = $_GET['photo'];
 				
 				// get photo upload date from db
 				$dbPhoto = $wpdb->get_row("SELECT upload_date, contest_id, competitor_photo FROM $this->contestEntriesTable WHERE photo_id=$photo");
 
-				$photo = $this->folders['raw'].$dbPhoto->competitor_photo;
+				$photo = urldecode($_GET['photoURL']).$dbPhoto->competitor_photo;
 
 				// get photo specs
 				$photoDetails = exif_read_data($photo);
@@ -1201,6 +1204,37 @@
 				$ajaxResponse .= '</div>';
 
 
+				// return ajax response and terminate
+				die($ajaxResponse);
+			}
+
+
+			/**
+			 * CALLBACK FUNCTION TO SEND TEST ADMIT EMAIL
+			 */
+			public function testAdmitEmail()
+			{
+				$currentUser = wp_get_current_user();
+
+				// connect to SendGrid API
+				$sendgrid = new SendGrid(get_option('sendgrid_user'), get_option('sendgrid_pwd'));
+
+				// create new email
+				$email = new SendGrid\Email();
+
+				// add recipient email
+				$email->addTo($currentUser->user_email, $currentUser->user_firstname.' '.$currentUser->user_lastname)
+					  ->setFrom("wppc@".str_replace('www.', '', $_SERVER['SERVER_NAME']))
+					  ->setFromName(get_bloginfo())
+					  ->setSubject(esc_attr($_POST['subject']))
+					  ->setHtml(wp_kses($_POST['body'], $this->expanded_alowed_tags()));
+
+				// send email to user
+				$sendgrid->send($email);
+				
+				// ajax response
+				$ajaxResponse = ' Email sent to '.$currentUser->user_email;
+				
 				// return ajax response and terminate
 				die($ajaxResponse);
 			}

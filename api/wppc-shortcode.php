@@ -91,38 +91,41 @@
 							});
 						});
 					</script>
-					<!-- <script>
-					<?php if ($settings['loadFacebookJs'] == 1): ?>
-						(function(d, s, id) {
-							var js, fjs = d.getElementsByTagName(s)[0];
-							if (d.getElementById(id)) return;
-							js = d.createElement(s); js.id = id;
-							js.src = "//connect.facebook.net/en_US/all.js";
-							fjs.parentNode.insertBefore(js, fjs);
-						}(document, 'script', 'facebook-jssdk'));
-					<?php endif; ?>
-					
-						// async init once loading is done
-						window.fbAsyncInit = function() {
-							FB.init({appId: <?php echo $settings['facebookAppId'] ?>, status: false});
-						};
-					
-						// share on facebook callback
-						function shareOnFacebook(link, picture, name, caption)
-						{
-							FB.ui({
-								method: 'feed',
-								link: link,
-								picture: picture,
-								name: name,
-								caption: caption,
-							    //description: 'Must read daily!'
-							});
-						}
-					</script>
-					
-					<script type="text/javascript" async src="//assets.pinterest.com/js/pinit.js" data-pin-build="parsePinBtns"></script> -->
 					<?php
+					
+					if ($settings['loadFacebookJs'] == 1):
+						?>
+						<script type="text/javascript">
+							(function(d, s, id) {
+								var js, fjs = d.getElementsByTagName(s)[0];
+								if (d.getElementById(id)) return;
+								js = d.createElement(s); js.id = id;
+								js.src = "//connect.facebook.net/en_US/all.js";
+								fjs.parentNode.insertBefore(js, fjs);
+							}(document, 'script', 'facebook-jssdk'));
+							// async init once loading is done
+							window.fbAsyncInit = function() {
+								FB.init({appId: <?php echo $settings['facebookAppId'] ?>, status: false});
+							};
+						
+							// share on facebook callback
+							function shareOnFacebook(link, picture, name, caption)
+							{
+								FB.ui({
+									method: 'feed',
+									link: link,
+									picture: picture,
+									name: name,
+									caption: caption,
+								    //description: 'Must read daily!'
+								});
+							}
+						</script>
+						
+						<script type="text/javascript" async src="//assets.pinterest.com/js/pinit.js" data-pin-build="parsePinBtns"></script>
+						</script>
+						<?php
+					endif;
 				});
 			}
 
