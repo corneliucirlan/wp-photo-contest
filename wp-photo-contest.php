@@ -17,6 +17,7 @@
 
 	// define globals
 	if (!defined('WPPC_VERSION')) define('WPPC_VERSION', '1.1'); // Plugin version
+	if (!defined('IMAGES_LOADED_VERSION')) define('IMAGES_LOADED_VERSION', '3.1.8');
 	if (!defined('WPPC_FILE')) define('WPPC_FILE', __FILE__); // Reference to this plugin's file
 	if (!defined('WPPC_DIR')) define('WPPC_DIR', plugin_dir_path(__FILE__)); // Plugin directory path
 	if (!defined('WPPC_URI')) define('WPPC_URI', trailingslashit(plugins_url('', __FILE__))); // plugin url

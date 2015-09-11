@@ -985,6 +985,29 @@
 
 
 			/**
+			 * BULK ACTIONS
+			 */
+			public function get_bulk_actions()
+		    {
+		    	/*if (isset($_GET['status']) && $_GET['status'] == "trash")
+		    			$actions = array('restore' => __('Restore'), 'delete' => __('Delete permanently'));
+		    		else
+		    			$actions = array('approve' => __('Approve'),'reject' => __('Reject'));
+
+		    	return $actions;*/
+		    }
+
+
+		    /**
+		     * PROCESS BULK ACTIONS
+		     */
+		    public function process_bulk_action()
+		    {
+		    	var_dump($_GET);
+		    }
+
+
+			/**
 		     * PREPARE DATA FOR DISPLAY
 		     */
 		    public function prepare_items()
@@ -1005,7 +1028,7 @@
 		        $this->_column_headers = array($columns, $hidden, $sortable);
 		        
 		        // process bulk actions
-		        $this->process_bulk_action();
+		        //$this->process_bulk_action();
 
 		        // process single actions
 		        $this->processActions();
@@ -1127,7 +1150,7 @@
 
 				$where = rtrim($where, 'AND ');
 
-		    	return $wpdb->get_results("SELECT * FROM $this->contestEntriesTable WHERE $where", ARRAY_A);
+		    	return $wpdb->get_results("SELECT * FROM $this->contestEntriesTable WHERE $where ORDER BY id DESC", ARRAY_A);
 		    }
 
 

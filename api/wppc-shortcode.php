@@ -84,10 +84,13 @@
 					?>
 					<script>
 						jQuery(document).ready(function($) {
-							$('#wppc-photos').masonry({
-								itemSelector: '.photo',
-								isAnimated: true,
-								columnWidth: '.photo',
+							$('#wppc-photos').imagesLoaded(function() {
+								$('#wppc-photos').masonry({
+									itemSelector: '.photo',
+									isAnimated: true,
+									columnWidth: '.photo',
+								});
+								alert(1);
 							});
 						});
 					</script>
@@ -160,6 +163,9 @@
 
 				// load masonry script
 				wp_enqueue_script('masonry');
+
+				// load images loaded script
+				wp_enqueue_script('images-loaded', WPPC_URI.'js/imagesloaded.pkgd.min.js', array('jquery'), IMAGES_LOADED_VERSION, true);
 			}
 
 			/**
@@ -824,7 +830,7 @@
 							<div class="col-sm-offset-2 col-sm-10">
 								<div class="checkbox col-sm-4">
 									<label>
-										<input type="checkbox" name="wppc-agree-rules" id="wppc-agree-rules" /> I agree to the rules
+										<input type="checkbox" name="wppc-agree-rules" id="wppc-agree-rules" /> I agree with the rules
 									</label>
 								</div>
 							</div>
