@@ -90,7 +90,6 @@
 									isAnimated: true,
 									columnWidth: '.photo',
 								});
-								alert(1);
 							});
 						});
 					</script>
