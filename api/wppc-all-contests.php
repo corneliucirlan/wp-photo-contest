@@ -129,11 +129,7 @@
 			 */
 			public function column_cb($item)
 			{
-				return sprintf(
-		            '<input type="checkbox" name="%1$s[]" value="%2$s" />',
-		            /*$1%s*/ $this->_args['singular'],  //Let's simply repurpose the table's singular label ("movie")
-		            /*$2%s*/ $item['id']                //The value of the checkbox should be the record's id
-		        );
+				return sprintf('<input type="checkbox" name="%1$s[]" value="%2$s" />', $this->_args['singular'], $item['id']);
 			}
 
 
@@ -144,21 +140,18 @@
 			{
 		    	if (isset($_GET['status']) && $_GET['status'] == "trash")
 						$actions = array(
-							'restore'		=> sprintf('<a href="?page=%s&status=trash&wppc-id=%s&wppc-action=%s">Restore</a>', 'wppc-all-contests', $item['id'], 'restore'),
-							'delete'		=> sprintf('<a href="?page=%s&status=trash&wppc-id=%s&wppc-action=%s">Delete permanently</a>', 'wppc-all-contests', $item['id'], 'delete'),
+							'restore'		=> sprintf('<a href="?page=%s&status=trashcontest=%s&action=%s">Restore</a>', $_REQUEST['page'], $item['id'], 'restore'),
+							'delete'		=> sprintf('<a href="?page=%s&status=trashcontest=%s&action=%s">Delete permanently</a>', $_REQUEST['page'], $item['id'], 'delete'),
 						); 
 					else
 						$actions = array(
 							'edit'		=> sprintf('<a href="?page=%s&contest=%s&activity=%s">Edit</a>', 'wppc-contest', $item['id'], 'edit'),
 							'view'		=> sprintf('<a href="?page=%s&contest=%s&activity=%s">Photos</a>', 'wppc-contest', $item['id'], 'view'),
-							'trash'		=> sprintf('<a href="?page=%s&contest=%s&activity=%s">Trash</a>', 'wppc-all-contests', $item['id'], 'trash'),
+							'trash'		=> sprintf('<a href="?page=%s&contest=%s&action=%s">Trash</a>', $_REQUEST['page'], $item['id'], 'trash'),
 							'stats'		=> sprintf('<a href="?page=%s&contest=%s&activity=%s">Stats</a>', 'wppc-contest', $item['id'], 'stats'),
 						);
 
-		        return sprintf('%1$s %2$s',
-		            /*$1%s*/ $item['contest_name'],
-		            /*$2%s*/ $this->row_actions($actions)
-		        );
+		        return sprintf('%1$s %2$s', $item['contest_name'], $this->row_actions($actions));
 			}
 
 
@@ -240,29 +233,52 @@
 		    {
 		    	global $wpdb;
 
-				// TRASH CONTESTS
-		    	if ($this->current_action() == "trash")
-		    		foreach ($_GET['contest'] as $contest)
-						$wpdb->update($this->contestsTable, array('status' => 0), array('id' => $contest));
+				
+				switch ($this->current_action()):
 
-		    	// RESTORE CONTESTS
-		    	if ($this->current_action() == "restore")
-		    		foreach ($_GET['contest'] as $contest)
-						$wpdb->update($this->contestsTable, array('status' => 1), array('id' => $contest));
-		    	
-				// DELETE CONTESTS
-		    	if ($this->current_action() == "delete")
-		    		foreach ($_GET['contest'] as $contest):
+					// TRASH CONTESTS
+		    		case 'trash':
+		    			if (!is_array($_GET['contest']))
+								$wpdb->update($this->contestsTable, array('status' => 0), array('id' => $_GET['contest']));
+							else foreach ($_GET['contest'] as $contest)
+								$wpdb->update($this->contestsTable, array('status' => 0), array('id' => $contest));
+						break;
+
+					// RESTORE CONTESTS
+					case 'restore':
+			    		if (!is_array($_GET['contest'])) $wpdb->update($this->contestsTable, array('status' => 1), array('id' => $_GET['contest']));
+			   				else foreach ($_GET['contest'] as $contest)
+			   					$wpdb->update($this->contestsTable, array('status' => 1), array('id' => $contest));
+						break;
+
+					// DELETE CONTESTS
+					case 'delete':
+						if (!is_array($_GET['contest'])):
+								// DELETE CONTEST
+								$wpdb->delete($this->contestsTable, array('id' => $_GET['contest']));
+
+								// DELETE CONTEST ENTRIES
+								$wpdb->delete($this->contestEntriesTable, array('contest_id' => $_GET['contest']));
+
+								// DELETE CONTEST VOTES
+								$wpdb->delete($this->contestVotesTable, array('contest_id' => $_GET['contest']));
+							else:
+								foreach ($_GET['contest'] as $contest):
 		    			
-						// DELETE CONTEST
-						$wpdb->delete($this->contestsTable, array('id' => $contest));
+									// DELETE CONTEST
+									$wpdb->delete($this->contestsTable, array('id' => $contest));
 
-						// DELETE CONTEST ENTRIES
-						$wpdb->delete($this->contestEntriesTable, array('contest_id' => $contest));
+									// DELETE CONTEST ENTRIES
+									$wpdb->delete($this->contestEntriesTable, array('contest_id' => $contest));
 
-						// DELETE CONTEST VOTES
-						$wpdb->delete($this->contestVotesTable, array('contest_id' => $contest));
-		    		endforeach;
+									// DELETE CONTEST VOTES
+									$wpdb->delete($this->contestVotesTable, array('contest_id' => $contest));
+		    					endforeach;
+						endif;
+						break;
+				
+				endswitch;
+		    		
 		    }
 
 
@@ -290,7 +306,7 @@
 		        $this->process_bulk_action();
 
 		        // process single actions
-		        $this->processActions();
+		        //$this->processActions();
 
 		      	// current page
 		        $current_page = $this->get_pagenum();
