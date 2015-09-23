@@ -228,7 +228,7 @@
 					$contestInfo = $wpdb->get_row("SELECT photos_allowed, photos_mobile_allowed FROM ".$wpdb->prefix.'wppc_contests_all'." WHERE id=".$id);
 					
 					// GET NUMBER OF CAMERA PHOTOS ADDED BY THIS COMPETITOR
-					$wpdb->get_results("SELECT id FROM ".$tableName." WHERE competitor_name='".$name."' AND competitor_email='".$email."' AND photo_mobile=0");
+					$wpdb->get_results("SELECT id FROM ".$tableName." WHERE competitor_name='".$name."' AND competitor_email='".$email."' AND photo_mobile=0 AND contest_id=".$id);
 					$totalPhotosAdded = $wpdb->num_rows;
 					
 					// CHECK IF THE NUMBER OF CAMERA PHOTOS REACHED
@@ -237,7 +237,7 @@
 					endif;
 
 					// GET NUMBER OF MOBILE PHOTOS ADDED BY THIS COMPETITOR
-					$wpdb->get_results("SELECT id FROM ".$tableName." WHERE competitor_name='".$name."' AND competitor_email='".$email."' AND photo_mobile=1");
+					$wpdb->get_results("SELECT id FROM ".$tableName." WHERE competitor_name='".$name."' AND competitor_email='".$email."' AND photo_mobile=1 AND contest_id=".$id);
 					$totalMobilePhotosAdded = $wpdb->num_rows;
 
 					// CHECK IF THE NUMBER OF MOBILE PHOTOS REACHED
