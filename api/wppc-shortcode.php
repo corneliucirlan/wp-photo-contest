@@ -84,7 +84,7 @@
 					?>
 					<script>
 						jQuery(document).ready(function($) {
-							$('#wppc-photos').imagesLoaded(function() {
+							$(document).imagesLoaded(function() {
 								$('#wppc-photos').masonry({
 									itemSelector: '.photo',
 									isAnimated: true,
@@ -109,25 +109,28 @@
 							window.fbAsyncInit = function() {
 								FB.init({appId: <?php echo $settings['facebookAppId'] ?>, status: false});
 							};
-						
-							// share on facebook callback
-							function shareOnFacebook(link, picture, name, caption)
-							{
-								FB.ui({
-									method: 'feed',
-									link: link,
-									picture: picture,
-									name: name,
-									caption: caption,
-								    //description: 'Must read daily!'
-								});
-							}
 						</script>
 						
 						<script type="text/javascript" async src="//assets.pinterest.com/js/pinit.js" data-pin-build="parsePinBtns"></script>
 						</script>
 						<?php
 					endif;
+					?>
+					<script>
+						// share on facebook callback
+						function shareOnFacebook(link, picture, name, caption)
+						{
+							FB.ui({
+								method: 'feed',
+								link: link,
+								picture: picture,
+								name: name,
+								caption: caption,
+							    //description: 'Must read daily!'
+							});
+						}
+					</script>
+					<?php
 				});
 			}
 
@@ -259,7 +262,7 @@
 								$image = wp_get_image_editor($contestDir.'raw/'.$filename);
 								
 								// CREATE THE "THUMBS" PHOTO
-								$image->resize(200, 200, false); // true - creates a square photo
+								$image->resize(200, 200, true); // true - creates a square photo
 								$image->save($contestDir.'thumbs/'.$filename);
 
 								// CREATE THE "MEDIUM" PHOTO
@@ -571,7 +574,7 @@
 									$totalDays = (strtotime($contest->end_registration) - strtotime($contest->start_date)) / (60*60*24);
 									$weeks = $totalDays % 7 != 0 ? $totalDays / 7 + 1 : $totalDays / 7;
 									?>
-									<div id="wppc-filters" class="row" style="margin-bottom: 20px;">
+									<div id="wppc-filters" class="row" style="margin-top:20px; margin-bottom: 20px;">
 										<div class="col-md-3">
 											<input type="hidden" value="<?php echo $contest->id ?>" />
 											<select name="wppc-weeks" id="wppc-weeks" class="form-control wppc-select-filter">
@@ -709,7 +712,7 @@
 				foreach ($contestPhotos as $contestPhoto):
 					$photoNumber++;
 					$mediumPhoto = $contestDir.'medium/'.$contestPhoto->competitor_photo;
-					$titlePhoto = $contestPhoto->photo_name.' at '.$contestPhoto->photo_location.' by '.$contestPhoto->competitor_name;
+					$titlePhoto = $contestPhoto->photo_name.' at '.$contestPhoto->photo_location.' by '.ucwords(strtolower($contestPhoto->competitor_name));
 					$caption = $socialDescription !== '' ? $socialDescription : $titlePhoto;
 					
 					if ($numberOfPages > 1 && $photoNumber % $numberOfPhotos == 1)

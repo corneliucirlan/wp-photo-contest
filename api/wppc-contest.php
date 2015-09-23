@@ -929,6 +929,15 @@
 			}
 
 
+			/**
+			 * COMPETITOR NAME
+			 */
+			public function column_competitor_name($item)
+			{
+				return sprintf('<a target="_blank" href="mailto:%s">%s</a>', $item['competitor_email'], $item['competitor_name']);
+			}
+
+
 			/** 
 			 * GET VIEWS
 			 */
@@ -1070,6 +1079,9 @@
 					// update the database to add the photo to the contest
 					$wpdb->update($this->contestEntriesTable, array('visible' => self::PHOTO_APPROVED), array('photo_id' => $_GET['id'], 'contest_id' => $_GET['contest']));
 
+					// get email subject and body
+					$contestEmails = unserialize($wpdb->get_var("SELECT contest_emails FROM $this->contestsTable WHERE id=".$_GET['contest']));
+
 					// connect to SendGrid API
 					$sendgrid = new SendGrid(get_option('sendgrid_user'), get_option('sendgrid_pwd'));
 
@@ -1102,10 +1114,8 @@
 
 			//	 DELETE PHOTO
 				if (isset($_GET['action']) && $_GET['action'] == 'delete'):
-					?>
-					<script>alert("DELETE");</script>
-					<?php
-
+					$wpdb->delete($this->contestEntriesTable, array('photo_id' => $_GET['id']));
+					
 				/*	// change file permissions
 					chmod($contestPath.'raw/'.$_GET['file'], 0755);
 					chmod($contestPath.'full/'.$_GET['file'], 0755);
