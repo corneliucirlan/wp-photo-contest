@@ -138,20 +138,22 @@
 			 */
 			public function column_contest_name($item)
 			{
+				$title = $item['contest_name'];
 		    	if (isset($_GET['status']) && $_GET['status'] == "trash")
 						$actions = array(
 							'restore'		=> sprintf('<a href="?page=%s&status=trashcontest=%s&action=%s">Restore</a>', $_REQUEST['page'], $item['id'], 'restore'),
 							'delete'		=> sprintf('<a href="?page=%s&status=trashcontest=%s&action=%s">Delete permanently</a>', $_REQUEST['page'], $item['id'], 'delete'),
 						); 
 					else
+						$title = sprintf('<a class="row-title" href="?page=%s&contest=%s&activity=%s" title="Edit %s">%s</a>', 'wppc-contest', $item['id'], 'edit', $item['contest_name'], $item['contest_name']);
 						$actions = array(
 							'edit'		=> sprintf('<a href="?page=%s&contest=%s&activity=%s">Edit</a>', 'wppc-contest', $item['id'], 'edit'),
-							'view'		=> sprintf('<a href="?page=%s&contest=%s&activity=%s">Photos</a>', 'wppc-contest', $item['id'], 'view'),
+							'view'		=> sprintf('<a href="?page=%s&contest=%s">Photos</a>', 'wppc-photos', $item['id']),
 							'trash'		=> sprintf('<a href="?page=%s&contest=%s&action=%s">Trash</a>', $_REQUEST['page'], $item['id'], 'trash'),
 							'stats'		=> sprintf('<a href="?page=%s&contest=%s&activity=%s">Stats</a>', 'wppc-contest', $item['id'], 'stats'),
 						);
 
-		        return sprintf('%1$s %2$s', $item['contest_name'], $this->row_actions($actions));
+		        return sprintf('%1$s %2$s', $title, $this->row_actions($actions));
 			}
 
 
@@ -305,10 +307,7 @@
 		        // process bulk actions
 		        $this->process_bulk_action();
 
-		        // process single actions
-		        //$this->processActions();
-
-		      	// current page
+		       	// current page
 		        $current_page = $this->get_pagenum();
 
 		        // get contests
@@ -329,38 +328,6 @@
 		            'per_page'    => $per_page,                     //WE have to determine how many items to show on a page
 		            'total_pages' => ceil($total_items/$per_page)   //WE have to calculate the total number of pages
 		        ));
-		    }
-
-
-		    /**
-		     * PROCESS SINGLE ACTIONS
-		     */
-		    private function processActions()
-		    {
-		    	global $wpdb;
-
-		    	// RESTORE CONTEST
-				if (isset($_GET['wppc-action']) && $_GET['wppc-action'] == 'restore'):
-					$wpdb->update($this->contestsTable, array('status' => 1), array('id' => $_GET['wppc-id']));
-				endif;
-				
-				// TRASH CONTEST
-				if (isset($_GET['wppc-action']) && $_GET['wppc-action'] == 'trash'):
-					$wpdb->update($this->contestsTable, array('status' => 0), array('id' => $_GET['wppc-id']));
-				endif;
-
-				// DELETE CONTEST
-				if (isset($_GET['wppc-action']) && $_GET['wppc-action'] == 'delete'):
-					
-					// DELETE CONTEST
-					$wpdb->delete($this->contestsTable, array('id' => $_GET['wppc-id']));
-
-					// DELETE CONTEST ENTRIES
-					$wpdb->delete($this->contestEntriesTable, array('contest_id' => $_GET['wppc-id']));
-
-					// DELETE CONTEST VOTES
-					$wpdb->delete($this->contestVotesTable, array('contest_id' => $_GET['wppc-id']));
-				endif;
 		    }
 
 
