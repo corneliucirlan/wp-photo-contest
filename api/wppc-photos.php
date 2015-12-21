@@ -4,31 +4,12 @@
 	if (!defined('ABSPATH')) die;
 
 	// PRE-REQUIREMENTS
-	require_once(ABSPATH.'wp-admin/includes/template.php');
 	if (!class_exists('WP_List_Table'))
 	    require_once(ABSPATH.'wp-admin/includes/class-wp-list-table.php');
-	if (!class_exists('WP_Screen'))
-		require_once( ABSPATH.'wp-admin/includes/screen.php');
-
+	
 	if (!class_exists('WPPCPhotos')):
-
 		class WPPCPhotos extends WP_List_Table
 		{
-			/**
-			 * CONTESTS TABLE
-			 */
-			private $contestsTable;
-
-			/**
-			 * CONTEST ENTRIES TABLE
-			 */
-			private $contestEntriesTable;
-
-			/**
-			 * CONTEST VOTES TABLE
-			 */
-			private $contestVotesTable;
-
 			/**
 			 * PHOTOS FOLDERS
 			 */
@@ -50,10 +31,7 @@
 				$wpDir = wp_upload_dir();
 
 				// initialize params
-				$this->contestsTable = $wpdb->prefix.'wppc_contests_all';
-				$this->contestEntriesTable = $wpdb->prefix.'wppc_contests_entries';
-				$this->contestVotesTable = $wpdb->prefix.'wppc_contests_votes';
-				$contestID = isset($_GET['contest']) ? $_GET['contest'] : $wpdb->get_var("SELECT id FROM $this->contestsTable WHERE 1 ORDER BY id DESC LIMIT 1");
+				$contestID = isset($_GET['contest']) ? $_GET['contest'] : $wpdb->get_var("SELECT id FROM ".WPPC_TABLE_ALL_CONTESTS." WHERE 1 ORDER BY id DESC LIMIT 1");
 				$this->folders = array(
 					'raw'		=> $wpDir['baseurl'].'/wppc-photos/wppc-photos-'.$contestID.'/raw/',
 					'full'		=> $wpDir['baseurl'].'/wppc-photos/wppc-photos-'.$contestID.'/full/',
@@ -72,9 +50,6 @@
 				// load admin scripts
 				add_action('admin_enqueue_scripts', array($this, 'enqueueAdminScripts'));				 
 
-				// add menu page
-				add_action('admin_menu', array($this, 'renderMenuItems')); 
-				
 				// AJAX CALL TO GET PHOTO VOTERS
 				add_action('wp_ajax_view-photo-voters', array($this, 'viewPhotoVoters'));
 
@@ -120,46 +95,13 @@
 
 
 			/**
-			 * RENDER PAGE
-			 */
-			public function renderPage()
-			{
-				//Fetch, prepare, sort, and filter our data...
-			    $this->prepare_items();
-				?>
-				<div class="wrap">
-					<?php $this->setTitle() ?>
-
-					<div id="modal-content" title="" class="hidden"></div>
-
-					<!-- Forms are NOT created automatically, so you need to wrap the table in one to use features like bulk actions -->
-					<form id="photos" method="get" action="">
-
-						<!-- separate photos by new | approved | rejected -->
-						<?php $this->views() ?>
-
-						<!-- search box -->
-			        	<?php $this->search_box('search', 'photo') ?>
-
-						<!-- For plugins, we also need to ensure that the form posts back to our current page -->
-						<input type="hidden" name="page" value="<?php echo $_REQUEST['page'] ?>" />
-
-						<!-- Now we can render the completed list table -->
-						<?php $this->display() ?>
-					</form>
-				</div>
-				<?php
-			}
-
-
-			/**
 			 * SET PAGE TITLE
 			 */
 			public function setTitle()
 			{
 				global $wpdb;
 
-				echo '<h2><strong>'.$wpdb->get_var("SELECT contest_name FROM $this->contestsTable WHERE id=".$_GET['contest']).'</strong> Photos</h2>';
+				echo '<h2><strong>'.$wpdb->get_var("SELECT contest_name FROM ".WPPC_TABLE_ALL_CONTESTS." WHERE id=".$_GET['contest']).'</strong> Photos</h2>';
 			}
 
 
@@ -215,7 +157,7 @@
 			{
 				global $wpdb;
 				
-				$newItems = $wpdb->get_var("SELECT COUNT(visible) FROM $this->contestEntriesTable WHERE visible=0 AND contest_id=".$_GET['contest']);
+				$newItems = $wpdb->get_var("SELECT COUNT(visible) FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE visible=0 AND contest_id=".$_GET['contest']);
 
 				$photo = '<a class="view-photo-details" href="'.$this->folders['raw'].$item['competitor_photo'].'" data-photo-id="'.
 					$item['photo_id'].'" target="_blank">'.ucwords($item['photo_name']).' | '.ucwords($item['photo_location']).'</a>';
@@ -282,9 +224,9 @@
 
 		    	$views = array();
 
-				$newItems = $wpdb->get_var("SELECT COUNT(visible) FROM $this->contestEntriesTable WHERE visible=".WPPC_PHOTO_NEW." AND contest_id=".$_GET['contest']);
-				$trashedItems = $wpdb->get_var("SELECT COUNT(visible) FROM $this->contestEntriesTable WHERE visible=".WPPC_PHOTO_REJECTED." AND contest_id=".$_GET['contest']);
-				$publishedItems = $wpdb->get_var("SELECT COUNT(visible) FROM $this->contestEntriesTable WHERE visible=".WPPC_PHOTO_APPROVED." AND contest_id=".$_GET['contest']);
+				$newItems = $wpdb->get_var("SELECT COUNT(visible) FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE visible=".WPPC_PHOTO_NEW." AND contest_id=".$_GET['contest']);
+				$trashedItems = $wpdb->get_var("SELECT COUNT(visible) FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE visible=".WPPC_PHOTO_REJECTED." AND contest_id=".$_GET['contest']);
+				$publishedItems = $wpdb->get_var("SELECT COUNT(visible) FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE visible=".WPPC_PHOTO_APPROVED." AND contest_id=".$_GET['contest']);
 
 				if ($newItems) $current = (!empty($_REQUEST['status']) ? $_REQUEST['status'] : 'new');
 					else $current = (!empty($_REQUEST['status']) ? $_REQUEST['status'] : 'publish');
@@ -359,13 +301,13 @@
 		    			if (!is_array($_GET['photo'])):
 								
 								// update the database to add the photo to the contest
-		    					$wpdb->update($this->contestEntriesTable, array('visible' => WPPC_PHOTO_APPROVED), array('photo_id' => $_GET['photo'], 'contest_id' => $_GET['contest']));
+		    					$wpdb->update(WPPC_TABLE_CONTESTS_ENTRIES, array('visible' => WPPC_PHOTO_APPROVED), array('photo_id' => $_GET['photo'], 'contest_id' => $_GET['contest']));
 		    				
 								// get contact information
-								$contactInfo = $wpdb->get_row("SELECT competitor_name, competitor_email FROM $this->contestEntriesTable WHERE contest_id=".$_GET['contest']." AND photo_id=".$_GET['photo'], ARRAY_A);
+								$contactInfo = $wpdb->get_row("SELECT competitor_name, competitor_email FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE contest_id=".$_GET['contest']." AND photo_id=".$_GET['photo'], ARRAY_A);
 
 		    					// get email subject and body
-								$contestEmails = unserialize($wpdb->get_var("SELECT contest_emails FROM $this->contestsTable WHERE id=".$_GET['contest']));
+								$contestEmails = unserialize($wpdb->get_var("SELECT contest_emails FROM ".WPPC_TABLE_ALL_CONTESTS." WHERE id=".$_GET['contest']));
 
 								// connect to SendGrid API
 								$sendgrid = new SendGrid(get_option('sendgrid_user'), get_option('sendgrid_pwd'));
@@ -386,13 +328,13 @@
 		    					foreach ($_GET['photo'] as $photo):
 	
 									// update the database to add the photo to the contest
-		    						$wpdb->update($this->contestEntriesTable, array('visible' => WPPC_PHOTO_APPROVED), array('photo_id' => $photo, 'contest_id' => $_GET['contest']));
+		    						$wpdb->update(WPPC_TABLE_CONTESTS_ENTRIES, array('visible' => WPPC_PHOTO_APPROVED), array('photo_id' => $photo, 'contest_id' => $_GET['contest']));
 
 		    						// get contact information
-									$contactInfo = $wpdb->get_row("SELECT competitor_name, competitor_email FROM $this->contestEntriesTable WHERE contest_id=".$_GET['contest']." AND photo_id=".$photo, ARRAY_A);
+									$contactInfo = $wpdb->get_row("SELECT competitor_name, competitor_email FROM WPPC_TABLE_CONTESTS_ENTRIES WHERE contest_id=".$_GET['contest']." AND photo_id=".$photo, ARRAY_A);
 
 			    					// get email subject and body
-									$contestEmails = unserialize($wpdb->get_var("SELECT contest_emails FROM $this->contestsTable WHERE id=".$_GET['contest']));
+									$contestEmails = unserialize($wpdb->get_var("SELECT contest_emails FROM ".WPPC_TABLE_ALL_CONTESTS." WHERE id=".$_GET['contest']));
 
 									// connect to SendGrid API
 									$sendgrid = new SendGrid(get_option('sendgrid_user'), get_option('sendgrid_pwd'));
@@ -416,23 +358,23 @@
 		    		// REJECT PHOTO
 		    		case "trash":
 		    			if (!is_array($_GET['photo']))
-		    					$wpdb->update($this->contestEntriesTable, array('visible' => WPPC_PHOTO_REJECTED), array('photo_id' => $_GET['photo'], 'contest_id' => $_GET['contest']));			
+		    					$wpdb->update(WPPC_TABLE_CONTESTS_ENTRIES, array('visible' => WPPC_PHOTO_REJECTED), array('photo_id' => $_GET['photo'], 'contest_id' => $_GET['contest']));			
 		    				else foreach ($_GET['photo'] as $photo)
-		    					$wpdb->update($this->contestEntriesTable, array('visible' => WPPC_PHOTO_REJECTED), array('photo_id' => $photo, 'contest_id' => $_GET['contest']));			
+		    					$wpdb->update(WPPC_TABLE_CONTESTS_ENTRIES, array('visible' => WPPC_PHOTO_REJECTED), array('photo_id' => $photo, 'contest_id' => $_GET['contest']));			
 		    			break;
 
 		    		// RESTORE PHOTO
 		    		case 'restore':
 						if (!is_array($_GET['photo']))
-								$wpdb->update($this->contestEntriesTable, array('visible' => WPPC_PHOTO_NEW), array('photo_id' => $_GET['photo']));
+								$wpdb->update(WPPC_TABLE_CONTESTS_ENTRIES, array('visible' => WPPC_PHOTO_NEW), array('photo_id' => $_GET['photo']));
 							else foreach ($_GET['photo'] as $photo)
-								$wpdb->update($this->contestEntriesTable, array('visible' => WPPC_PHOTO_NEW), array('photo_id' => $photo));
+								$wpdb->update(WPPC_TABLE_CONTESTS_ENTRIES, array('visible' => WPPC_PHOTO_NEW), array('photo_id' => $photo));
 		    			break;
 
 		    		// DELETE PHOTO
 		    		case 'delete':
 		    			if (!is_array($_GET['photo'])):
-				    			$wpdb->delete($this->contestEntriesTable, array('photo_id' => $_GET['photo']));
+				    			$wpdb->delete(WPPC_TABLE_CONTESTS_ENTRIES, array('photo_id' => $_GET['photo']));
 							
 								// change file permissions
 								chmod($contestPath.'raw/'.$_GET['file'], 0755);
@@ -512,19 +454,19 @@
 		    	global $wpdb;
 
 		    	// set default contest as last contest
-		    	if (!isset($_GET['contest'])) $_GET['contest'] = $wpdb->get_var("SELECT id FROM $this->contestsTable WHERE 1 ORDER BY id DESC LIMIT 1");
+		    	if (!isset($_GET['contest'])) $_GET['contest'] = $wpdb->get_var("SELECT id FROM ".WPPC_TABLE_ALL_CONTESTS." WHERE 1 ORDER BY id DESC LIMIT 1");
 
 		    	// get order params for the SQL query
 				$orderby = (!empty($_REQUEST['orderby'])) ? $_REQUEST['orderby'] : 'id'; //If no sort, default to title
 				$order = (!empty($_REQUEST['order'])) ? $_REQUEST['order'] : 'DESC'; //If no order, default to asc
 
-		    	$newItems = $wpdb->get_var("SELECT COUNT(visible) FROM $this->contestEntriesTable WHERE visible=0 AND contest_id=".$_GET['contest']);
+		    	$newItems = $wpdb->get_var("SELECT COUNT(visible) FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE visible=0 AND contest_id=".$_GET['contest']);
 				
 				if ($newItems) $status = (!empty($_REQUEST['status']) ? $_REQUEST['status'] : 'new');
 					else $status = (!empty($_REQUEST['status']) ? $_REQUEST['status'] : 'publish');
 
 				$where = 'contest_id=';
-		    	$where .= isset($_GET['contest']) ? $_GET['contest'] : $wpdb->get_var("SELECT id FROM $this->contestsTable WHERE 1 ORDER BY id DESC LIMIT 1");
+		    	$where .= isset($_GET['contest']) ? $_GET['contest'] : $wpdb->get_var("SELECT id FROM ".WPPC_TABLE_ALL_CONTESTS." WHERE 1 ORDER BY id DESC LIMIT 1");
 		    	$where .= ' AND ';
 
 		    	// search
@@ -539,7 +481,7 @@
 
 				$where = rtrim($where, 'AND ');
 
-		    	return $wpdb->get_results("SELECT * FROM $this->contestEntriesTable WHERE $where ORDER BY $orderby $order", ARRAY_A);
+		    	return $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE $where ORDER BY $orderby $order", ARRAY_A);
 		    }
 
 
@@ -554,7 +496,7 @@
 				$photoID = $_GET['photoid'];
 
 				// get voters
-				$votes = $wpdb->get_results("SELECT * FROM $this->contestVotesTable WHERE photo_id=".$photoID);
+				$votes = $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_CONTESTS_VOTES." WHERE photo_id=".$photoID);
 
 				// create ajax response
 				$ajaxResponse = array();
@@ -585,7 +527,7 @@
 				$photo = $_GET['photo'];
 				
 				// get photo upload date from db
-				$dbPhoto = $wpdb->get_row("SELECT upload_date, contest_id, competitor_photo FROM $this->contestEntriesTable WHERE photo_id=$photo");
+				$dbPhoto = $wpdb->get_row("SELECT upload_date, contest_id, competitor_photo FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE photo_id=$photo");
 
 				$photo = urldecode($_GET['photoURL']).$dbPhoto->competitor_photo;
 
@@ -653,5 +595,61 @@
 		}
 
 	endif;
+
+
+	function addWPPCContestPhotos()
+	{
+		$hook = add_submenu_page('wppc-all-contests', 'Contest Photos', 'Photos', 'manage_options', 'wppc-photos', 'renderContestPhotos');
+		add_action('load-'.$hook, 'addWPPCContestPhotosOptions');
+	}
+
+
+	function addWPPCContestPhotosOptions()
+	{
+		global $contestPhotos;
+
+		$option = 'per_page';
+
+		$args = array(
+			'label'		=> 'Photos',
+			'default'	=> 20,
+			'option'	=> 'photos_per_page',
+		);
+		add_screen_option($option, $args);
+		$contestPhotos = new WPPCPhotos();
+	}
+	add_action('admin_menu', 'addWPPCContestPhotos');
+
+
+	function renderContestPhotos()
+	{
+		global $contestPhotos;
+
+		//Fetch, prepare, sort, and filter our data...
+	    $contestPhotos->prepare_items();
+		?>
+		<div class="wrap">
+			<?php $contestPhotos->setTitle() ?>
+
+			<div id="modal-content" title="" class="hidden"></div>
+
+			<!-- Forms are NOT created automatically, so you need to wrap the table in one to use features like bulk actions -->
+			<form id="photos" method="get" action="">
+
+				<!-- separate photos by new | approved | rejected -->
+				<?php $contestPhotos->views() ?>
+
+				<!-- search box -->
+	        	<?php $contestPhotos->search_box('search', 'photo') ?>
+
+				<!-- For plugins, we also need to ensure that the form posts back to our current page -->
+				<input type="hidden" name="page" value="<?php echo $_REQUEST['page'] ?>" />
+
+				<!-- Now we can render the completed list table -->
+				<?php $contestPhotos->display() ?>
+			</form>
+		</div>
+		<?php
+	}
 
 ?>

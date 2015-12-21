@@ -4,95 +4,25 @@
 	if (!defined('ABSPATH')) die;
 	
 	// PRE-REQUIREMENTS
-	require_once(ABSPATH.'wp-admin/includes/template.php');
 	if (!class_exists('WP_List_Table'))
 	    require_once(ABSPATH.'wp-admin/includes/class-wp-list-table.php');
-	if (!class_exists('WP_Screen'))
-		require_once( ABSPATH.'wp-admin/includes/screen.php');
 
 	if (!class_exists('WPPCAllContests')):
 		class WPPCAllContests extends WP_List_Table
 		{
 			/**
-			 * CONTESTS TABLE
-			 */
-			private $contestsTable;
-
-			/**
-			 * CONTEST ENTRIES TABLE
-			 */
-			private $contestEntriesTable;
-
-			/**
-			 * CONTEST VOTES TABLE
-			 */
-			private $contestVotesTable;
-
-
-			/**
 			 * CONSTRUCTOR
 			 */
 			public function __construct()
 			{
-				global $status, $page, $wpdb;
-
-				// initialize params
-				$this->contestsTable = $wpdb->prefix.'wppc_contests_all';
-				$this->contestEntriesTable = $wpdb->prefix.'wppc_contests_entries';
-				$this->contestVotesTable = $wpdb->prefix.'wppc_contests_votes';
+				global $status, $page;
 
 				// set parent defaults
 				parent::__construct(array(
-					'singular'	=> 'Contest',
-					'plural'	=> 'Contests',
-					'screen'	=> 'contests-list',
-					'ajax'		=> false,
+					'singular'	=> __('contest', 'text-domain'),
+					'plural'	=> __('contests', 'text-domain'),
+					'ajax'		=> true
 				));
-
-				// CREATE WPPC MENU
-				add_action('admin_menu', array($this, 'renderMenuItems'));
-			}
-
-
-			/**
-			 * CALLBACK FUNCTION TO RENDER MENU ITEMS
-			 */
-			public function renderMenuItems()
-			{
-				// CREATE ITEM IN ADMIN MENU
-				add_menu_page('WordPress Photo Contests', 'Photo Contests', 'manage_options', 'wppc-all-contests', array($this, 'displayWPPCAllContests'), plugins_url('wp-photo-contest/img/icon_16.png'), 99);
-		
-				// ADD "ALL CONTESTS" ITEM
-				add_submenu_page("wppc-all-contests", "All Contests", "All Contests", "manage_options", "wppc-all-contests", array($this, 'displayWPPCAllContests'));
-			}
-
-
-			/**
-			 * DISPLAY ALL WPPC CONTESTS
-			 */
-			public function displayWPPCAllContests()
-			{
-				//Fetch, prepare, sort, and filter our data...
-			    $this->prepare_items();
-				?>
-				<div class="wrap">
-					<h2>
-						All Contests 
-						<a class="add-new-h2" href="?page=wppc-contest" title="Add New">Add New</a>
-					</h2>
-
-					<!-- Forms are NOT created automatically, so you need to wrap the table in one to use features like bulk actions -->
-			        <form id="bus-schedule-form" method="get" action="">
-			        	<?php $this->views() ?>
-			        	<!-- search box -->
-			        	<?php $this->search_box('search', 'schedule') ?>
-			            <!-- For plugins, we also need to ensure that the form posts back to our current page -->
-			            <input type="hidden" name="page" value="<?php echo $_REQUEST['page'] ?>" />
-			            <!-- Now we can render the completed list table -->
-			            <?php $this->display() ?>
-			        </form>
-				</div>
-				<?php
 			}
 
 
@@ -139,12 +69,12 @@
 			public function column_contest_name($item)
 			{
 				$title = $item['contest_name'];
-		    	if (isset($_GET['status']) && $_GET['status'] == "trash")
+		    	if (isset($_GET['status']) && $_GET['status'] == "trash"):
 						$actions = array(
-							'restore'		=> sprintf('<a href="?page=%s&status=trashcontest=%s&action=%s">Restore</a>', $_REQUEST['page'], $item['id'], 'restore'),
-							'delete'		=> sprintf('<a href="?page=%s&status=trashcontest=%s&action=%s">Delete permanently</a>', $_REQUEST['page'], $item['id'], 'delete'),
+							'restore'		=> sprintf('<a href="?page=%s&status=trash&contest=%s&action=%s">Restore</a>', $_REQUEST['page'], $item['id'], 'restore'),
+							'delete'		=> sprintf('<a href="?page=%s&status=trash&contest=%s&action=%s">Delete permanently</a>', $_REQUEST['page'], $item['id'], 'delete'),
 						); 
-					else
+					else:
 						$title = sprintf('<a class="row-title" href="?page=%s&contest=%s&activity=%s" title="Edit %s">%s</a>', 'wppc-contest', $item['id'], 'edit', $item['contest_name'], $item['contest_name']);
 						$actions = array(
 							'edit'		=> sprintf('<a href="?page=%s&contest=%s&activity=%s">Edit</a>', 'wppc-contest', $item['id'], 'edit'),
@@ -152,6 +82,7 @@
 							'trash'		=> sprintf('<a href="?page=%s&contest=%s&action=%s">Trash</a>', $_REQUEST['page'], $item['id'], 'trash'),
 							'stats'		=> sprintf('<a href="?page=%s&contest=%s&activity=%s">Stats</a>', 'wppc-contest', $item['id'], 'stats'),
 						);
+				endif;
 
 		        return sprintf('%1$s %2$s', $title, $this->row_actions($actions));
 			}
@@ -193,8 +124,8 @@
 		    	$views = array();
 				$current = (!empty($_REQUEST['status']) ? $_REQUEST['status'] : 'publish');
 
-				$publishedItems = $wpdb->get_var("SELECT COUNT(status) FROM $this->contestsTable WHERE status=1");
-				$trashedItems = $wpdb->get_var("SELECT COUNT(status) FROM $this->contestsTable WHERE status=0");
+				$publishedItems = $wpdb->get_var("SELECT COUNT(status) FROM ".WPPC_TABLE_ALL_CONTESTS." WHERE status=1");
+				$trashedItems = $wpdb->get_var("SELECT COUNT(status) FROM ".WPPC_TABLE_ALL_CONTESTS." WHERE status=0");
 
 				// Publish link
 				if ($publishedItems):
@@ -241,40 +172,40 @@
 					// TRASH CONTESTS
 		    		case 'trash':
 		    			if (!is_array($_GET['contest']))
-								$wpdb->update($this->contestsTable, array('status' => 0), array('id' => $_GET['contest']));
+								$wpdb->update(WPPC_TABLE_ALL_CONTESTS, array('status' => 0), array('id' => $_GET['contest']));
 							else foreach ($_GET['contest'] as $contest)
-								$wpdb->update($this->contestsTable, array('status' => 0), array('id' => $contest));
+								$wpdb->update(WPPC_TABLE_ALL_CONTESTS, array('status' => 0), array('id' => $contest));
 						break;
 
 					// RESTORE CONTESTS
 					case 'restore':
-			    		if (!is_array($_GET['contest'])) $wpdb->update($this->contestsTable, array('status' => 1), array('id' => $_GET['contest']));
+			    		if (!is_array($_GET['contest'])) $wpdb->update(WPPC_TABLE_ALL_CONTESTS, array('status' => 1), array('id' => $_GET['contest']));
 			   				else foreach ($_GET['contest'] as $contest)
-			   					$wpdb->update($this->contestsTable, array('status' => 1), array('id' => $contest));
+			   					$wpdb->update(WPPC_TABLE_ALL_CONTESTS, array('status' => 1), array('id' => $contest));
 						break;
 
 					// DELETE CONTESTS
 					case 'delete':
 						if (!is_array($_GET['contest'])):
 								// DELETE CONTEST
-								$wpdb->delete($this->contestsTable, array('id' => $_GET['contest']));
+								$wpdb->delete(WPPC_TABLE_ALL_CONTESTS, array('id' => $_GET['contest']));
 
 								// DELETE CONTEST ENTRIES
-								$wpdb->delete($this->contestEntriesTable, array('contest_id' => $_GET['contest']));
+								$wpdb->delete(WPPC_TABLE_CONTESTS_ENTRIES, array('contest_id' => $_GET['contest']));
 
 								// DELETE CONTEST VOTES
-								$wpdb->delete($this->contestVotesTable, array('contest_id' => $_GET['contest']));
+								$wpdb->delete(WPPC_TABLE_CONTESTS_VOTES, array('contest_id' => $_GET['contest']));
 							else:
 								foreach ($_GET['contest'] as $contest):
 		    			
 									// DELETE CONTEST
-									$wpdb->delete($this->contestsTable, array('id' => $contest));
+									$wpdb->delete(WPPC_TABLE_ALL_CONTESTS, array('id' => $contest));
 
 									// DELETE CONTEST ENTRIES
-									$wpdb->delete($this->contestEntriesTable, array('contest_id' => $contest));
+									$wpdb->delete(WPPC_TABLE_CONTESTS_ENTRIES, array('contest_id' => $contest));
 
 									// DELETE CONTEST VOTES
-									$wpdb->delete($this->contestVotesTable, array('contest_id' => $contest));
+									$wpdb->delete(WPPC_TABLE_CONTESTS_VOTES, array('contest_id' => $contest));
 		    					endforeach;
 						endif;
 						break;
@@ -357,10 +288,69 @@
 		        $where = rtrim($where, ' AND ');
 		        
 		        // return data from the db
-		      	return $wpdb->get_results("SELECT * FROM $this->contestsTable $where ORDER BY $orderby $order", ARRAY_A);
+		      	return $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_ALL_CONTESTS." $where ORDER BY $orderby $order", ARRAY_A);
 		    }
 
-		} // END CLASS
+		} // end class
 	endif;
+
+
+
+	function addWPPCAllContests()
+	{
+		$hook = add_menu_page(__('WordPress Photo Contests'), __('Photo Contests'), 'manage_options', 'wppc-all-contests', 'displayWPPCAllContests', plugins_url('wp-photo-contest/img/icon_16.png'), 99);
+		add_action('load-'.$hook, 'addWPPCAllContestsOptions');
+
+		$hook = add_submenu_page("wppc-all-contests", __('All Contests'), __('All Contests'), "manage_options", "wppc-all-contests", 'displayWPPCAllContests');
+		add_action('load-'.$hook, 'addWPPCAllContestsOptions');
+	}
+
+	
+	function addWPPCAllContestsOptions()
+	{
+		global $allWPPCContests;
+
+		$option = 'per_page';
+
+		$args = array(
+			'label' 	=> 'Contests',
+			'default' 	=> 20,
+			'option'	=> 'contests_per_page',
+		);
+		add_screen_option($option, $args);
+		$allWPPCContests = new WPPCAllContests();
+	}
+	add_action('admin_menu', 'addWPPCAllContests');
+
+
+	/**
+	 * DISPLAY ALL WPPC CONTESTS
+	 */
+	function displayWPPCAllContests()
+	{
+		global $allWPPCContests;
+
+		//Fetch, prepare, sort, and filter our data...
+	    $allWPPCContests->prepare_items();
+		?>
+		<div class="wrap">
+			<h2>
+				All Contests 
+				<a class="add-new-h2" href="?page=wppc-contest" title="Add New">Add New</a>
+			</h2>
+
+			<!-- Forms are NOT created automatically, so you need to wrap the table in one to use features like bulk actions -->
+	        <form id="bus-schedule-form" method="get" action="">
+	        	<?php $allWPPCContests->views() ?>
+	        	<!-- search box -->
+	        	<?php $allWPPCContests->search_box('search', 'search_id') ?>
+	            <!-- For plugins, we also need to ensure that the form posts back to our current page -->
+	            <input type="hidden" name="page" value="<?php echo $_REQUEST['page'] ?>" />
+	            <!-- Now we can render the completed list table -->
+	            <?php $allWPPCContests->display() ?>
+	        </form>
+		</div>
+		<?php
+	}
 
 ?>

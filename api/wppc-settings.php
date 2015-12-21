@@ -131,8 +131,7 @@
 				require_once(ABSPATH.'wp-admin/includes/upgrade.php');
 
 				// table that contains all contests
-				$tableName = $wpdb->prefix.'wppc_contests_all';
-				$sql = "CREATE TABLE ".$tableName." (
+				$sql = "CREATE TABLE ".WPPC_TABLE_ALL_CONTESTS." (
 					id mediumint(9) NOT NULL AUTO_INCREMENT,
 					contest_name tinytext NOT NULL,
 					start_date date DEFAULT '0000-00-00' NOT NULL,
@@ -163,8 +162,7 @@
 				dbDelta($sql);
 
 				// table that contains all contests entries
-				$tableName = $wpdb->prefix.'wppc_contests_entries';
-				$sql = "CREATE TABLE ".$tableName." (
+				$sql = "CREATE TABLE ".WPPC_TABLE_CONTESTS_ENTRIES." (
 					id mediumint(9) NOT NULL AUTO_INCREMENT,
 					contest_id mediumint(9) UNSIGNED NOT NULL,
 					photo_id bigint UNSIGNED NOT NULL,
@@ -182,8 +180,7 @@
 				dbDelta($sql);
 
 				// table that contains votes for contests
-				$tableName = $wpdb->prefix.'wppc_contests_votes';
-				$sql = "CREATE TABLE ".$tableName." (
+				$sql = "CREATE TABLE ".WPPC_TABLE_CONTESTS_VOTES." (
 					id mediumint(9) NOT NULL AUTO_INCREMENT,
 					contest_id mediumint(9) UNSIGNED NOT NULL,
 					photo_id bigint UNSIGNED NOT NULL,

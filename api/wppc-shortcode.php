@@ -1,11 +1,11 @@
 <?php
 
-if (!class_exists('WPPCShortcode')):
-	class WPPCShortcode
-{
-	private $submitFormAction = 'wppc-submit-photo';
-	private $votePhotoAction = 'wppc-vote-photo';
-	private $filterPhotos = 'wppc-filter-photos';
+	if (!class_exists('WPPCShortcode')):
+		class WPPCShortcode
+		{
+			private $submitFormAction = 'wppc-submit-photo';
+			private $votePhotoAction = 'wppc-vote-photo';
+			private $filterPhotos = 'wppc-filter-photos';
 
 			/**
 			 * GENERAL PLUGIN SETTINGS
@@ -25,21 +25,7 @@ if (!class_exists('WPPCShortcode')):
 			 */
 			private $photosPerPage;
 
-			/**
-			 * CONTESTS TABLE
-			 */
-			private $contestsTable;
-
-			/**
-			 * CONTEST ENTRIES TABLE
-			 */
-			private $contestEntriesTable;
-
-			/**
-			 * CONTEST VOTES TABLE
-			 */
-			private $contestVotesTable;
-
+			
 			/**
 			 * CONSTRUCTOR
 			 */
@@ -51,11 +37,6 @@ if (!class_exists('WPPCShortcode')):
 				$this->generalSettings = get_option(WPPC_SETTINGS_GENERAL);
 				$this->watermarkSettings = get_option(WPPC_SETTINGS_WATERMARK);
 				//$this->photosPerPage = $this->generalSettings['photosPerPage'];
-
-				// initialize params
-				$this->contestsTable = $wpdb->prefix.'wppc_contests_all';
-				$this->contestEntriesTable = $wpdb->prefix.'wppc_contests_entries';
-				$this->contestVotesTable = $wpdb->prefix.'wppc_contests_votes';
 
 				// SET TIMEZONE
 				date_default_timezone_set($this->generalSettings['timezone']);
@@ -147,7 +128,7 @@ if (!class_exists('WPPCShortcode')):
 					</script>
 					<?php
 				});
-}
+			}
 
 			/**
 			 * LOAD JAVASCRIPT
@@ -236,45 +217,42 @@ if (!class_exists('WPPCShortcode')):
 				if ($name != '' && $email != '' && $photo != '' && $photoName != '' && $photoLocation != '' && $agreeRules != ''):
 					global $wpdb;
 
-					// SET TABLE NAME
-				$tableName = $wpdb->prefix.'wppc_contests_entries';
-
 					// GET NUMBER OF PHOTOS ALLOWED IN THIS CONTEST
-				$contestInfo = $wpdb->get_row("SELECT photos_allowed, photos_mobile_allowed FROM ".$wpdb->prefix.'wppc_contests_all'." WHERE id=".$id);
+					$contestInfo = $wpdb->get_row("SELECT photos_allowed, photos_mobile_allowed FROM ".WPPC_TABLE_ALL_CONTESTS." WHERE id=".$id);
 
 					// GET NUMBER OF CAMERA PHOTOS ADDED BY THIS COMPETITOR
-				$wpdb->get_results("SELECT id FROM ".$tableName." WHERE competitor_name='".$name."' AND competitor_email='".$email."' AND photo_mobile=0 AND contest_id=".$id);
-				$totalPhotosAdded = $wpdb->num_rows;
+					$wpdb->get_results("SELECT id FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE competitor_name='".$name."' AND competitor_email='".$email."' AND photo_mobile=0 AND contest_id=".$id);
+					$totalPhotosAdded = $wpdb->num_rows;
 
 					// CHECK IF THE NUMBER OF CAMERA PHOTOS REACHED
-				if ($totalPhotosAdded >= $contestInfo->photos_allowed && $mobile != 1):
-					$jsonResponse['entryAdded'] = 'TOTAL';
-				endif;
+					if ($totalPhotosAdded >= $contestInfo->photos_allowed && $mobile != 1):
+						$jsonResponse['entryAdded'] = 'TOTAL';
+					endif;
 
 					// GET NUMBER OF MOBILE PHOTOS ADDED BY THIS COMPETITOR
-				$wpdb->get_results("SELECT id FROM ".$tableName." WHERE competitor_name='".$name."' AND competitor_email='".$email."' AND photo_mobile=1 AND contest_id=".$id);
-				$totalMobilePhotosAdded = $wpdb->num_rows;
+					$wpdb->get_results("SELECT id FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE competitor_name='".$name."' AND competitor_email='".$email."' AND photo_mobile=1 AND contest_id=".$id);
+					$totalMobilePhotosAdded = $wpdb->num_rows;
 
 					// CHECK IF THE NUMBER OF MOBILE PHOTOS REACHED
-				if ($totalMobilePhotosAdded >= $contestInfo->photos_mobile_allowed && $mobile == 1)
-					$jsonResponse['entryAdded'] = "MOBILE";
+					if ($totalMobilePhotosAdded >= $contestInfo->photos_mobile_allowed && $mobile == 1)
+						$jsonResponse['entryAdded'] = "MOBILE";
 
 					// CREATE ALL PHOTO FILES AND ADD TO DATABASE
-				if ($jsonResponse['entryAdded'] == false):
+					if ($jsonResponse['entryAdded'] == false):
 
 						// GET WP DEFAULT UPLOAD FOLDER
-					$wpDir = wp_upload_dir();
+						$wpDir = wp_upload_dir();
 
 						// SET CONTEST FOLDER
-				$contestDir = $wpDir['basedir'].'/wppc-photos/wppc-photos-'.$id.'/';
+						$contestDir = $wpDir['basedir'].'/wppc-photos/wppc-photos-'.$id.'/';
 
 						// SAVE THE RAW FILE FROM THE USER
-				$filename = $randomNumber.'-'.strtolower(sanitize_file_name($photo['name']));
-				if (move_uploaded_file($photo['tmp_name'], $contestDir.'raw/'.$filename)):
-					$jsonResponse['photo'] = $photo['name'];
+						$filename = $randomNumber.'-'.strtolower(sanitize_file_name($photo['name']));
+						if (move_uploaded_file($photo['tmp_name'], $contestDir.'raw/'.$filename)):
+								$jsonResponse['photo'] = $photo['name'];
 
 								// LOAD THE FILE TO CREATE NECESSARY COPIES
-				$image = wp_get_image_editor($contestDir.'raw/'.$filename);
+								$image = wp_get_image_editor($contestDir.'raw/'.$filename);
 
 								// CREATE THE "THUMBS" PHOTO
 								$image->resize(200, 200, true); // true - creates a square photo
@@ -292,7 +270,7 @@ if (!class_exists('WPPCShortcode')):
 								//$this->watermarkImage($contestDir.'raw/'.$filename, $contestDir.'full/'.$filename, '© '.$name);
 								
 								// INSERT ENTRY INTO THE DATABASE
-								$wpdb->insert($tableName,
+								$wpdb->insert(WPPC_TABLE_CONTESTS_ENTRIES,
 									array(
 										'contest_id' => $id,
 										'photo_id' => $randomNumber,
@@ -303,29 +281,12 @@ if (!class_exists('WPPCShortcode')):
 										'photo_name' => $photoName,
 										'photo_location' => $photoLocation,
 										//'upload_date' => date('Y-m-d h:m:s', mktime()),
-										)
-									);
+									)
+								);
 
 								// NOTIFY ADMINS VIA EMAIL
 								if ($this->generalSettings['notifyAdmins'] == 1):
-									$contest = $wpdb->get_row("SELECT contest_name FROM ".$wpdb->prefix."wppc_contests_all WHERE id=".$id);
-									/*include_once(WPPC_DIR.'php/PHPMailer/PHPMailerAutoload.php');
-
-									$mail = new PHPMailer();
-									$mail->IsSMTP();
-									$mail->SMTPDebug = 0; // 1 tells it to display SMTP errors and messages, 0 turns off all errors and messages, 2 prints messages only.
-									$mail->Host = ini_get('SMTP');
-									$mail->IsHTML(true);
-									$mail->From = "wppc@".str_replace('www.', '', $_SERVER['SERVER_NAME']);
-									$mail->FromName = get_bloginfo();
-									$mail->Subject = "New Photo Submitted";
-									$mail->Body = "A new photo has been submitted in the '".$contest->contest_name."' contest.<br/><br/> <a href=".admin_url('admin.php?page=wppc-contest&wppc-id='.$id.'&wppc-action=view').">Click here to view it</a>";*/
-										//$mail->AddCC($admin->data->user_email, $admin->data->display_name);
-									//$mail->Send();
-									//$mail->ClearAllRecipients();
-									
-
-									
+									$contest = $wpdb->get_row("SELECT contest_name FROM ".WPPC_TABLE_ALL_CONTESTS." WHERE id=".$id);
 
 									// connect to SendGrid API
 									$sendgrid = new SendGrid(get_option('sendgrid_user'), get_option('sendgrid_pwd'));
@@ -338,33 +299,31 @@ if (!class_exists('WPPCShortcode')):
 										$email = new SendGrid\Email();
 
 										// add recipient email
-									$email->addTo($admin->data->user_email, $admin->data->display_name)
-									->setFrom("wppc@".str_replace('www.', '', $_SERVER['SERVER_NAME']))
-									->setFromName(get_bloginfo())
-									->setSubject("New Photo Submitted")
-									->setHtml("A new photo has been submitted in the <strong>".$contest->contest_name."</strong> contest.<br/><br/> <a href=".admin_url('admin.php?page=wppc-contest&contest='.$id.'&activity=view').">Click here to view it</a>");
+										$email->addTo($admin->data->user_email, $admin->data->display_name)
+											->setFrom("wppc@".str_replace('www.', '', $_SERVER['SERVER_NAME']))
+											->setFromName(get_bloginfo())
+											->setSubject("New Photo Submitted")
+											->setHtml("A new photo has been submitted in the <strong>".$contest->contest_name."</strong> contest.<br/><br/> <a href=".admin_url('admin.php?page=wppc-contest&contest='.$id.'&activity=view').">Click here to view it</a>");
 
 										// send email to user
-									$sendgrid->send($email);
+										$sendgrid->send($email);
 
 									endforeach;
 
-									endif;
+								endif;
 
-									$jsonResponse['entryAdded'] = true;
+								$jsonResponse['entryAdded'] = true;
+							
 							// FILE UPLOAD FAILED
-									else:
-										$jsonResponse['entryAdded'] = "FILEFAIL";
-									endif;
-									endif;
-									endif;
+							else:
+								$jsonResponse['entryAdded'] = "FILEFAIL";
+						endif;
+					endif;
+				endif;
 
-				// SEND AJAX RESPONSE
-									echo json_encode($jsonResponse);
-
-				// TERMINATE
-									die();
-								}
+				// SEND AJAX RESPONSE AND TERMINATE
+				die(json_encode($jsonResponse));
+			}
 
 			/**
 			 * CALLBACK AJAX FUNCTION TO VOTE PHOTO
@@ -380,13 +339,13 @@ if (!class_exists('WPPCShortcode')):
 				$photoID = isset($_POST['wppc-value']) ? $_POST['wppc-value'] : '';
 
 				// GET THE MAX NUMBER OF VOTES ALLOWED
-				$votesAllowed = $wpdb->get_var("SELECT votes_allowed FROM ".$wpdb->prefix.'wppc_contests_all'." WHERE id=".$id);
+				$votesAllowed = $wpdb->get_var("SELECT votes_allowed FROM ".WPPC_TABLE_ALL_CONTESTS." WHERE id=".$id);
 
 				// GET USER'S IP
 				$userIP = $this->getUserIP();
 
 				// GET HOW MANY TIMES THE USER ALREADY VOTED
-				$userVoted = $wpdb->get_var("SELECT vote_number FROM ".$wpdb->prefix.'wppc_contests_votes'." WHERE vote_ip='".ip2long($userIP)."' AND contest_id='".$id."' AND photo_id='".$photoID."'");
+				$userVoted = $wpdb->get_var("SELECT vote_number FROM ".WPPC_TABLE_CONTESTS_VOTES." WHERE vote_ip='".ip2long($userIP)."' AND contest_id='".$id."' AND photo_id='".$photoID."'");
 
 				// GET CONTEST POINTS
 				$points = array();
@@ -411,7 +370,7 @@ if (!class_exists('WPPCShortcode')):
 						// USER ALREADY VOTED, CHECK IF HE CAN VOTE AGAIN
 					if ($userVoted < $votesAllowed):
 						$currentTime = date('Y-m-d h:m:s', mktime());
-					$voteTime = $wpdb->get_var("SELECT vote_time FROM ".$wpdb->prefix.'wppc_contests_votes'." WHERE vote_ip='".ip2long($userIP)."' AND contest_id='".$id."' AND photo_id='".$photoID."'");
+					$voteTime = $wpdb->get_var("SELECT vote_time FROM ".WPPC_TABLE_CONTESTS_VOTES." WHERE vote_ip='".ip2long($userIP)."' AND contest_id='".$id."' AND photo_id='".$photoID."'");
 
 								// # OF DAYS FROM LAST VOTE
 					$days = (strtotime($currentTime)-strtotime($voteTime))/(60*60*24);
@@ -420,12 +379,12 @@ if (!class_exists('WPPCShortcode')):
 								// USER CAN STILL VOTE
 					if ($days >= 1.0):
 										// UPDATE VOTES #
-						$wpdb->update($wpdb->prefix.'wppc_contests_votes',
+						$wpdb->update(WPPC_TABLE_CONTESTS_VOTES,
 							array('vote_number' => $userVoted + 1, 'vote_time' => $currentTime),
 							array('vote_ip' => ip2Long($userIP), 'photo_id' => $photoID));
 
 										// ADD VOTE TO PHOTO
-					$wpdb->update($wpdb->prefix.'wppc_contests_entries',
+					$wpdb->update(WPPC_TABLE_CONTESTS_ENTRIES,
 						array('votes' => $_POST['wppc-votes'] + 1),
 						array('photo_id' => $photoID, 'contest_id' => $id));
 
@@ -445,7 +404,7 @@ if (!class_exists('WPPCShortcode')):
 					// USER NEVER VOTED THIS PHOTO
 					else:
 						// ADD USER TO VOTERS
-						$wpdb->insert($wpdb->prefix.'wppc_contests_votes',
+						$wpdb->insert(WPPC_TABLE_CONTESTS_VOTES,
 							array(
 								'contest_id' => $id,
 								'photo_id' => $photoID,
@@ -455,7 +414,7 @@ if (!class_exists('WPPCShortcode')):
 							);
 
 						// ADD VOTE TO PHOTO
-					$wpdb->update($wpdb->prefix.'wppc_contests_entries',
+					$wpdb->update(WPPC_TABLE_CONTESTS_ENTRIES,
 						array('votes' => $_POST['wppc-votes'] + 1),
 						array('photo_id' => $photoID, 'contest_id' => $id));
 
@@ -487,10 +446,9 @@ if (!class_exists('WPPCShortcode')):
 
 				$wpDir = wp_upload_dir();
 				$contestDir = $wpDir['baseurl'].'/wppc-photos/wppc-photos-'.$id.'/';
-				$contest = $wpdb->get_row("SELECT contest_name, first_point, second_point, third_point, forth_point, fifth_point, start_date, end_registration, end_vote, contest_social_description FROM ".$wpdb->prefix.'wppc_contests_all'." WHERE id=".$id);
+				$contest = $wpdb->get_row("SELECT contest_name, first_point, second_point, third_point, forth_point, fifth_point, start_date, end_registration, end_vote, contest_social_description FROM ".WPPC_TABLE_ALL_CONTESTS." WHERE id=".$id);
 				$contestPoints = array($contest->first_point, $contest->second_point, $contest->third_point, $contest->forth_point, $contest->fifth_point);
 				$weeks = absint(((strtotime($contest->end_registration) - strtotime($contest->start_date)) / (60*60*24)) / 7);
-				$tableName = $wpdb->prefix.'wppc_contests_entries';
 
 				// PREPARE AJAX RESPONSE
 				$ajaxResponse = '<div id="vote-results-680263891" class="alert alert-warning" style=""><p>No photos match the criteria</p></div>';
@@ -500,50 +458,45 @@ if (!class_exists('WPPCShortcode')):
 				
 				switch ($type[0]):
 					// FILTER BY WEEK
-				case 'week':
-				if ($filter == 'week-all'):
-					$contestPhotos = $wpdb->get_results("SELECT * FROM ".$tableName." WHERE contest_id=".$id." AND visible=1");
-				else:
-					$startDate = strtotime('+'.absint(($type[1]-1)*7)." day", strtotime($contest->start_date));
-				$endDate = strtotime('+'.absint($type[1]*7-1)." day", strtotime($contest->start_date));
-				$contestPhotos = $wpdb->get_results("SELECT * FROM ".$tableName." WHERE contest_id=".$id." AND (upload_date>='".date('Y-m-d, 0:00:00', $startDate)."' AND upload_date<='".date('Y-m-d, 0:00:00', $endDate)."') AND visible=1");
-				endif;
-				break;
+					case 'week':
+						if ($filter == 'week-all'):
+								$contestPhotos = $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE contest_id=".$id." AND visible=1");
+							else:
+								$startDate = strtotime('+'.absint(($type[1]-1)*7)." day", strtotime($contest->start_date));
+								$endDate = strtotime('+'.absint($type[1]*7-1)." day", strtotime($contest->start_date));
+								$contestPhotos = $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE contest_id=".$id." AND (upload_date>='".date('Y-m-d, 0:00:00', $startDate)."' AND upload_date<='".date('Y-m-d, 0:00:00', $endDate)."') AND visible=1");
+						endif;
+					break;
 
 					// FILTER BY POINT
-				case 'point':
-				if ($filter == 'point-all'):
-					$contestPhotos = $wpdb->get_results("SELECT * FROM ".$tableName." WHERE contest_id=".$id." AND visible=1");
-				else:
-					switch ($type[1]):
-				case 0: $contestPhotos = $wpdb->get_results("SELECT * FROM ".$tableName." WHERE contest_id=".$id." AND votes<".$contest->first_point." AND visible=1"); break;
-				case 1: $contestPhotos = $wpdb->get_results("SELECT * FROM ".$tableName." WHERE contest_id=".$id." AND votes>=".$contest->first_point." AND votes<".$contest->second_point." AND visible=1"); break;
-				case 2: $contestPhotos = $wpdb->get_results("SELECT * FROM ".$tableName." WHERE contest_id=".$id." AND votes>=".$contest->second_point." AND votes<".$contest->third_point." AND visible=1"); break;
-				case 3: $contestPhotos = $wpdb->get_results("SELECT * FROM ".$tableName." WHERE contest_id=".$id." AND votes>=".$contest->third_point." AND votes<".$contest->forth_point." AND visible=1"); break;
-				case 4: $contestPhotos = $wpdb->get_results("SELECT * FROM ".$tableName." WHERE contest_id=".$id." AND votes>=".$contest->forth_point." AND votes<".$contest->fifth_point." AND visible=1"); break;
-				case 5: $contestPhotos = $wpdb->get_results("SELECT * FROM ".$tableName." WHERE contest_id=".$id." AND votes>=".$contest->fifth_point." AND visible=1"); break;
-				endswitch;
-				endif;
-				break;
+					case 'point':
+						if ($filter == 'point-all'):
+								$contestPhotos = $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE contest_id=".$id." AND visible=1");
+							else:
+								switch ($type[1]):
+									case 0: $contestPhotos = $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE contest_id=".$id." AND votes<".$contest->first_point." AND visible=1"); break;
+									case 1: $contestPhotos = $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE contest_id=".$id." AND votes>=".$contest->first_point." AND votes<".$contest->second_point." AND visible=1"); break;
+									case 2: $contestPhotos = $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE contest_id=".$id." AND votes>=".$contest->second_point." AND votes<".$contest->third_point." AND visible=1"); break;
+									case 3: $contestPhotos = $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE contest_id=".$id." AND votes>=".$contest->third_point." AND votes<".$contest->forth_point." AND visible=1"); break;
+									case 4: $contestPhotos = $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE contest_id=".$id." AND votes>=".$contest->forth_point." AND votes<".$contest->fifth_point." AND visible=1"); break;
+									case 5: $contestPhotos = $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE contest_id=".$id." AND votes>=".$contest->fifth_point." AND visible=1"); break;
+								endswitch;
+						endif;
+					break;
 
 					// FILTER MOBILE
-				case 'mobile':
-				if ($type[1] == 'only') 
-					$contestPhotos = $wpdb->get_results("SELECT * FROM ".$tableName." WHERE contest_id=".$id." AND photo_mobile=1 AND visible=1");
-				else
-					$contestPhotos = $wpdb->get_results("SELECT * FROM ".$tableName." WHERE contest_id=".$id." AND visible=1");
-				break;
+					case 'mobile':
+						if ($type[1] == 'only') $contestPhotos = $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE contest_id=".$id." AND photo_mobile=1 AND visible=1");
+							else $contestPhotos = $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE contest_id=".$id." AND visible=1");
+						break;
 				endswitch;
 
 				// NO PHOTOS MATCH THE CRITERIA
 				if (!empty($contestPhotos))
 					$ajaxResponse = $this->displayContestPhotos($contestPhotos, $contest->contest_name, $contest->end_vote, $contestDir, $contestPoints, $_POST['wppc-url'], $contest->contest_social_description, $this->photosPerPage);
 
-				// SEND AJAX RESPONSE
-				echo $ajaxResponse;
-				
-				// TERMINATE
-				die();
+				// SEND AJAX RESPONSE AND TERMINATE
+				die($ajaxResponse);
 			}
 
 
@@ -556,8 +509,7 @@ if (!class_exists('WPPCShortcode')):
 				$atts = shortcode_atts(array('id' => 1), $atts);
 
 				global $wpdb;
-				$tableName = $wpdb->prefix.'wppc_contests_all';
-				$contest = $wpdb->get_row('SELECT * FROM '.$tableName.' WHERE id='.$atts['id']);
+				$contest = $wpdb->get_row('SELECT * FROM '.WPPC_TABLE_ALL_CONTESTS.' WHERE id='.$atts['id']);
 				$contestWinners = unserialize($contest->contest_winners);
 				?>
 
@@ -626,7 +578,7 @@ if (!class_exists('WPPCShortcode')):
 							$contestDir = $wpDir['baseurl'].'/wppc-photos/wppc-photos-'.$contest->id.'/';
 
 										// get all photos for this contest
-							$contestPhotos = $wpdb->get_results('SELECT * FROM '.$wpdb->prefix.'wppc_contests_entries WHERE contest_id='.$contest->id.' AND visible=1');
+							$contestPhotos = $wpdb->get_results('SELECT * FROM '.WPPC_TABLE_CONTESTS_ENTRIES.' WHERE contest_id='.$contest->id.' AND visible=1');
 
 										// shuffle photos
 							shuffle($contestPhotos);
@@ -646,7 +598,7 @@ if (!class_exists('WPPCShortcode')):
 									<?php echo $contestWinners['text'] ?>
 									<div class="row">
 										<h2>First prize</h2>
-										<?php $firstWinner = $wpdb->get_row("SELECT * FROM $this->contestEntriesTable WHERE contest_id='".$atts['id']."' AND photo_id=".$contestWinners['first-winner'], ARRAY_A); ?>
+										<?php $firstWinner = $wpdb->get_row("SELECT * FROM WPPC_TABLE_CONTESTS_ENTRIES WHERE contest_id='".$atts['id']."' AND photo_id=".$contestWinners['first-winner'], ARRAY_A); ?>
 										<a class="group1" href="<?php echo $contestDir ?>medium/<?php echo $firstWinner['competitor_photo'] ?>" title="">
 											<img src="<?php echo $contestDir ?>medium/<?php echo $firstWinner['competitor_photo'] ?>" alt="<?php echo $firstWinner['photo_name'] ?>" />
 										</a>
@@ -655,14 +607,14 @@ if (!class_exists('WPPCShortcode')):
 									<div class="row">
 										<div class="no-padding-left col-md-6">
 											<h2>Second prize</h2>
-											<?php $secondWinner = $wpdb->get_row("SELECT * FROM $this->contestEntriesTable WHERE contest_id='".$atts['id']."' AND photo_id=".$contestWinners['second-winner'], ARRAY_A); ?>
+											<?php $secondWinner = $wpdb->get_row("SELECT * FROM WPPC_TABLE_CONTESTS_ENTRIES WHERE contest_id='".$atts['id']."' AND photo_id=".$contestWinners['second-winner'], ARRAY_A); ?>
 											<a class="group1" href="<?php echo $contestDir ?>medium/<?php echo $secondWinner['competitor_photo'] ?>" title="" style="background-image: url('<?php echo $contestDir ?>medium/<?php echo $secondWinner['competitor_photo'] ?>'); position: relative; float: left; width: 100%; height: 300px; background-position: 50% 50%; background-repeat: no-repeat; background-size: cover;">
 												<!-- <img src="<?php echo $contestDir ?>medium/<?php echo $secondWinner['competitor_photo'] ?>" alt="<?php echo $secondWinner['photo_name'] ?>" /> -->
 											</a>
 										</div>
 										<div class="no-padding-right col-md-6">
 											<h2>Third prize</h2>
-											<?php $thirdWinner = $wpdb->get_row("SELECT * FROM $this->contestEntriesTable WHERE contest_id='".$atts['id']."' AND photo_id=".$contestWinners['third-winner'], ARRAY_A); ?>
+											<?php $thirdWinner = $wpdb->get_row("SELECT * FROM WPPC_TABLE_CONTESTS_ENTRIES WHERE contest_id='".$atts['id']."' AND photo_id=".$contestWinners['third-winner'], ARRAY_A); ?>
 											<a class="group1" href="<?php echo $contestDir ?>medium/<?php echo $thirdWinner['competitor_photo'] ?>" title="" style="background-image: url('<?php echo $contestDir ?>medium/<?php echo $thirdWinner['competitor_photo'] ?>'); position: relative; float: left; width: 100%; height: 300px; background-position: 50% 50%; background-repeat: no-repeat; background-size: cover;">
 												<!-- <img src="<?php echo $contestDir ?>medium/<?php echo $thirdWinner['competitor_photo'] ?>" alt="<?php echo $thirdWinner['photo_name'] ?>" /> -->
 											</a>
@@ -672,7 +624,7 @@ if (!class_exists('WPPCShortcode')):
 									<div class="row">
 										<h2>Our favorites</h2>
 										<?php foreach ($contestWinners['our-favorites'] as $photoID): ?>
-											<?php $photo = $wpdb->get_row("SELECT * FROM $this->contestEntriesTable WHERE contest_id='".$atts['id']."' AND photo_id=".$photoID, ARRAY_A); ?>
+											<?php $photo = $wpdb->get_row("SELECT * FROM WPPC_TABLE_CONTESTS_ENTRIES WHERE contest_id='".$atts['id']."' AND photo_id=".$photoID, ARRAY_A); ?>
 											<div class="col-md-3">
 												<a class="group1" href="<?php echo $contestDir ?>medium/<?php echo $photo['competitor_photo'] ?>" title="">
 													<img src="<?php echo $contestDir ?>thumbs/<?php echo $photo['competitor_photo'] ?>" alt="<?php echo $photo['photo_name'] ?>" />
@@ -827,7 +779,7 @@ if (!class_exists('WPPCShortcode')):
 				global $wpdb;
 
 				// get number of mobile photos
-				$mobilePhotos = $wpdb->get_var("SELECT photos_mobile_allowed FROM $this->contestsTable WHERE id=".$id);
+				$mobilePhotos = $wpdb->get_var("SELECT photos_mobile_allowed FROM ".WPPC_TABLE_ALL_CONTESTS." WHERE id=".$id);
 
 
 				echo $text;
@@ -1100,6 +1052,6 @@ if (!class_exists('WPPCShortcode')):
 			
 
 		} // END CLASS
-		endif;
+	endif;
 
-		?>
+?>

@@ -14,6 +14,8 @@
 	 *  MIN REQUIREMENTS: MySQL- 5.0.3 | PHP 5.3 | WP 3.3
 	 */
 	
+	global $wpdb;
+
 
 	// Plugin version
 	if (!defined('WPPC_VERSION')) define('WPPC_VERSION', '1.1'); 
@@ -51,12 +53,20 @@
 	// Mobile device photo
 	if (!defined('WPPC_PHOTO_MOBILE_DEVICE')) define('WPPC_PHOTO_MOBILE_DEVICE', 1);
 
+	// All contests table
+	if (!defined('WPPC_TABLE_ALL_CONTESTS')) define('WPPC_TABLE_ALL_CONTESTS', $wpdb->prefix.'wppc_contests_all');
+
+	// Contests entries table
+	if (!defined('WPPC_TABLE_CONTESTS_ENTRIES')) define('WPPC_TABLE_CONTESTS_ENTRIES', $wpdb->prefix.'wppc_contests_entries');
+
+	// Contests votes table
+	if (!defined('WPPC_TABLE_CONTESTS_VOTES')) define('WPPC_TABLE_CONTESTS_VOTES', $wpdb->prefix.'wppc_contests_votes');
+
 
 	/**
 	 * VIEW ALL CONTESTS
 	 */
 	include_once(WPPC_DIR.'api/wppc-all-contests.php');
-	new WPPCAllContests();
 
 	/**
 	 * CREATE A NEW CONTEST PAGE
@@ -68,7 +78,6 @@
 	 * CONTEST PHOTOS
 	 */
 	include_once(WPPC_DIR.'api/wppc-photos.php');
-	new WPPCPhotos();
 
 	/**
 	 * CREATE THE SETTINGS PAGE

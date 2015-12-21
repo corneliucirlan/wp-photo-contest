@@ -8,36 +8,10 @@
 		class WPPCContest 
 		{
 			/**
-			 * CONTESTS TABLE
-			 */
-			private $contestsTable;
-
-			/**
-			 * CONTEST ENTRIES TABLE
-			 */
-			private $contestEntriesTable;
-
-			/**
-			 * CONTEST VOTES TABLE
-			 */
-			private $contestVotesTable;
-
-
-			/**
 			 * CONSTRUCTOR
 			 */
 			public function __construct()
 			{
-				global $wpdb;
-
-				$wpDir = wp_upload_dir();
-				$contestID = isset($_GET['contest']) ? $_GET['contest'] : 1;
-
-				// initialize params
-				$this->contestsTable = $wpdb->prefix.'wppc_contests_all';
-				$this->contestEntriesTable = $wpdb->prefix.'wppc_contests_entries';
-				$this->contestVotesTable = $wpdb->prefix.'wppc_contests_votes';
-
 				// load admin scripts
 				add_action('admin_enqueue_scripts', array($this, 'enqueueAdminScripts'));				 
 
@@ -118,10 +92,10 @@
 						switch ($_GET['activity']):
 
 							// EDIT CONTEST
-							case 'edit': echo __("Edit").' <strong>'.__($wpdb->get_var("SELECT contest_name FROM $this->contestsTable WHERE id=".$_GET['contest'])).'</strong> '.__('Contest'); break;
+							case 'edit': echo __("Edit").' <strong>'.__($wpdb->get_var("SELECT contest_name FROM ".WPPC_TABLE_ALL_CONTESTS." WHERE id=".$_GET['contest'])).'</strong> '.__('Contest'); break;
 
 							// CONTEST STATS
-							case 'stats': echo __("View").' <strong>'.__($wpdb->get_var("SELECT contest_name FROM $this->contestsTable WHERE id=".$_GET['contest'])).'</strong> '.__('Stats'); break;
+							case 'stats': echo __("View").' <strong>'.__($wpdb->get_var("SELECT contest_name FROM ".WPPC_TABLE_ALL_CONTESTS." WHERE id=".$_GET['contest'])).'</strong> '.__('Stats'); break;
 
 							// DEFAULT - NEW CONTEST
 							_e("New Contest");
@@ -137,7 +111,7 @@
 			{
 				global $wpdb;
 				
-				if (isset($_GET['contest'])) $contest = $wpdb->get_row("SELECT * FROM $this->contestsTable WHERE id=".$_GET['contest']);
+				if (isset($_GET['contest'])) $contest = $wpdb->get_row("SELECT * FROM ".WPPC_TABLE_ALL_CONTESTS." WHERE id=".$_GET['contest']);
 
 				// get all dates to validate				
 				$contestStartDate = isset($_POST['start-date']) ? explode("-", $_POST['start-date']) : '';
@@ -162,7 +136,7 @@
 						$validEndDate = true;
 				
 				// get current contest photos
-				$photos = isset($_GET['contest']) ? $wpdb->get_results("SELECT * FROM $this->contestEntriesTable WHERE contest_id='".$_GET['contest']."' AND visible=".WPPC_PHOTO_APPROVED) : array();
+				$photos = isset($_GET['contest']) ? $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE contest_id='".$_GET['contest']."' AND visible=".WPPC_PHOTO_APPROVED) : array();
 
 				// unserialize data
 				$contestWinners = isset($_GET['contest']) && $contest->contest_winners != '' ? unserialize($contest->contest_winners) : array();
@@ -578,7 +552,7 @@
 				global $wpdb;
 
 				// total # of photos
-				$totalPhotos = $wpdb->get_results("SELECT * FROM $this->contestEntriesTable WHERE contest_id=".$_GET['contest']);
+				$totalPhotos = $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE contest_id=".$_GET['contest']);
 
 				// total # of approved photos
 				$approvedPhotos = 0;
@@ -607,7 +581,7 @@
 				$cameraPhotos = count($totalPhotos) - $mobilePhotos;
 
 				// total # of voters
-				$totalVoters = $wpdb->get_results("SELECT * FROM $this->contestVotesTable WHERE contest_id=".$_GET['contest']);
+				$totalVoters = $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_CONTESTS_VOTES." WHERE contest_id=".$_GET['contest']);
 						
 				// total # of votes
 				$totalVotes = array();
@@ -733,12 +707,12 @@
 						
 						// UPDATE CONTEST
 						if (isset($_GET['contest'])):
-								$wpdb->update($this->contestsTable, $contestData, array('id'=>$_GET['contest']));
+								$wpdb->update(WPPC_TABLE_ALL_CONTESTS, $contestData, array('id'=>$_GET['contest']));
 								$id = $_GET['contest'];
 							
 							// INSERT NEW CONTEST
 							else:
-								$wpdb->insert($this->contestsTable, $contestData);
+								$wpdb->insert(WPPC_TABLE_ALL_CONTESTS, $contestData);
 								$id = $wpdb->insert_id;
 						endif;
 
