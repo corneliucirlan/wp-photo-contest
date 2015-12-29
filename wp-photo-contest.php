@@ -62,6 +62,9 @@
 	// Contests votes table
 	if (!defined('WPPC_TABLE_CONTESTS_VOTES')) define('WPPC_TABLE_CONTESTS_VOTES', $wpdb->prefix.'wppc_contests_votes');
 
+	// WPPC Nonce
+	if (!defined('WPPC_NONCE')) define('WPPC_NONCE', 'wppc-nonce');
+
 
 	/**
 	 * VIEW ALL CONTESTS

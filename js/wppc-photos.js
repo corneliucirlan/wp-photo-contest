@@ -47,29 +47,28 @@ jQuery(document).ready(function($) {
 
 		// get a list of IPs
 		$.getJSON(ajaxurl, {action: 'view-photo-voters', photoid: photoID}, function(data, textStatus) {
+			console.log(data);
 
 			$.each(data, function(index, val) {
-				console.log(data);
 		
 				// get geolocation data for every IP
-				$.getJSON("http://ip-api.com/json/"+val['ip']+"?callback=?", function(json) {
+				$.getJSON('http://freegeoip.net/json/'+val.ip+'?callback=?', function(json) {
 
 					// set marker
 					var marker = new google.maps.Marker({
-						position: {lat: json['lat'], lng: json['lon']},
+						position: {lat: json.latitude, lng: json.longitude},
 						map: map,
-						title: json['query'],
+						title: json.ip,
 					});
 
 					var contentString = '<div id="content">'+
 						'<div id="siteNotice">'+
 						'</div>'+
-						'<h1 id="firstHeading" class="firstHeading"><a href="http://whatismyipaddress.com/ip/'+val['ip']+'" target="_blank">'+val['ip']+'</a></h1>'+
+						'<h1 id="firstHeading" class="firstHeading"><a href="http://whatismyipaddress.com/ip/'+val.ip+'" target="_blank">'+json.city+'</a></h1>'+
 						'<div id="bodyContent">'+
-						'<p><strong>Votes: '+val['votes']+'</strong></p>'+
-						'<p>Country: '+json['country']+'</p>'+
-						'<p>City: '+json['city']+'</p>'+
-						'<p>ISP: '+json['isp']+'</p>'+
+						'<p><strong>IP: '+val.ip+'</strong></p>'+
+						'<p><strong>Votes: '+val.votes+'</strong></p>'+
+						'<p>Address: '+json.city+', '+json.region_name+', '+json.country_name+'</p>'+
 						'</div>'+
 						'</div>';
 					var infowindow = new google.maps.InfoWindow({content: contentString});
@@ -106,7 +105,7 @@ jQuery(document).ready(function($) {
 		$dialogWindow.dialog('open');
 
 		// get photo details
-		$.get(ajaxurl, data, function(data) {
+		$.get(ajaxurl, data, function(data, textstatus, xhr) {
 			$dialogWindow.html(data);
 		});
 	 });

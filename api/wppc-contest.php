@@ -739,6 +739,37 @@
 
 
 			/**
+			 * CALLBACK FUNCTION TO SEND TEST ADMIT EMAIL
+			 */
+			public function testAdmitEmail()
+			{
+				$currentUser = wp_get_current_user();
+
+				// connect to SendGrid API
+				$sendgrid = new SendGrid(get_option('sendgrid_user'), get_option('sendgrid_pwd'));
+
+				// create new email
+				$email = new SendGrid\Email();
+
+				// add recipient email
+				$email->addTo($currentUser->user_email, $currentUser->user_firstname.' '.$currentUser->user_lastname)
+					  ->setFrom("wppc@".str_replace('www.', '', $_SERVER['SERVER_NAME']))
+					  ->setFromName(get_bloginfo())
+					  ->setSubject(esc_attr($_POST['subject']))
+					  ->setHtml(wp_kses($_POST['body'], $this->expanded_alowed_tags()));
+
+				// send email to user
+				$sendgrid->send($email);
+				
+				// ajax response
+				$ajaxResponse = ' Email sent to '.$currentUser->user_email;
+				
+				// return ajax response and terminate
+				die($ajaxResponse);
+			}
+
+
+			/**
 		     * EXPAND ALLOWED HTML TAGS
 		     */
 		    function expanded_alowed_tags() 

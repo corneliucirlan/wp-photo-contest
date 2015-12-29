@@ -13,13 +13,7 @@
 			/**
 			 * PHOTOS FOLDERS
 			 */
-			private $folders;
-
-			/**
-			 * NONCE VARIABLE
-			 */
-			private $nonce = 'wppc-nonce';
-	
+			private $folders;	
 
 			/**
 			 * CONSTRUCTOR
@@ -43,26 +37,11 @@
 				parent::__construct(array(
 					'singular'	=> 'photo',
 					'plural'	=> 'photos',
-					'screen'	=> 'photos-list',
-					'ajax'		=> false,
+					'ajax'		=> true,
 				));
 
 				// load admin scripts
 				add_action('admin_enqueue_scripts', array($this, 'enqueueAdminScripts'));				 
-
-				// AJAX CALL TO GET PHOTO VOTERS
-				add_action('wp_ajax_view-photo-voters', array($this, 'viewPhotoVoters'));
-
-				// AJAX CALL GET GET PHOTO SPECS
-				add_action('wp_ajax_view-photo-specs', array($this, 'viewPhotoSpecs'));
-			}
-
-			/**
-			 * CALLBACK FUNCTION TO RENDER MENU ITEMS
-			 */
-			public function renderMenuItems()
-			{
-				add_submenu_page('wppc-all-contests', 'Contest Photos', 'Photos', 'manage_options', 'wppc-photos', array($this, 'renderPage'));
 			}
 
 
@@ -85,7 +64,7 @@
 				wp_enqueue_script('jquery-ui-dialog');
 
 				wp_localize_script('wppc-photos-js', 'wppc', array(
-					'nonce' 	=> wp_create_nonce($this->nonce),
+					'nonce' 	=> wp_create_nonce(WPPC_NONCE),
 					'photoURL'	=> urlencode($this->folders['raw']),
 				));
 
@@ -483,117 +462,7 @@
 
 		    	return $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE $where ORDER BY $orderby $order", ARRAY_A);
 		    }
-
-
-		    /**
-		     * CALLBACK FUNCTION TO VIEW PHOTO VOTERS
-		     */
-		  	public function viewPhotoVoters()
-			{
-				global $wpdb;
-
-				// get photo id;
-				$photoID = $_GET['photoid'];
-
-				// get voters
-				$votes = $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_CONTESTS_VOTES." WHERE photo_id=".$photoID);
-
-				// create ajax response
-				$ajaxResponse = array();
-
-				foreach ($votes as $vote)
-					$ajaxResponse[] = array(
-						'ip'	=> long2ip($vote->vote_ip),
-						'votes'	=> $vote->vote_number
-					);
-
-				// return ajax response and terminate
-				die(json_encode($ajaxResponse));
-			}
-
-
-			/**
-			 * CALLBACK FUNCTION TO VIEW PHOTO SPECS
-			 */
-			public function viewPhotoSpecs()
-			{
-				global $wpdb;
-
-				// security check
-				if (!wp_verify_nonce($_GET['nonce'], $this->nonce))
-					die(__("Security check failed"));
-
-				// get photo url
-				$photo = $_GET['photo'];
-				
-				// get photo upload date from db
-				$dbPhoto = $wpdb->get_row("SELECT upload_date, contest_id, competitor_photo FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE photo_id=$photo");
-
-				$photo = urldecode($_GET['photoURL']).$dbPhoto->competitor_photo;
-
-				// get photo specs
-				$photoDetails = exif_read_data($photo);
-				$primaryDetails = array('FileName', 'DateTimeOriginal', 'Make', 'Model', 'MimeType', 'ExposureTime', 'FNumber', 'ISOSpeedRatings', 'ShutterSpeedValue', 'Flash');
-
-				// create ajax response
-				$ajaxResponse = '';
-				$ajaxResponse .= '<div>';
-					$ajaxResponse .= '<div class="entered-photo" style="display: table-cell; width: 50%; vertical-align: top; padding: 3rem;">';
-						$ajaxResponse .= '<img src="'.$photo.'" style="max-width: 100%;" />';
-					$ajaxResponse .= '</div>';
-					$ajaxResponse .= '<div class="details-photo" style="display: table-cell; width: 50%; vertical-align: top; padding: 3rem;">';
-						$ajaxResponse .= '<p>Filename: '.$photoDetails['FileName'].'</p>';
-						$ajaxResponse .= '<p>Dimensions: '.$photoDetails['COMPUTED']['Width'].'px x '.$photoDetails['COMPUTED']['Height'].'px</p>';
-						$ajaxResponse .= '<p>Original DateTime: '.$photoDetails['DateTimeOriginal'].'</p>';
-						$ajaxResponse .= '<p>Upload DateTime: '.$dbPhoto->upload_date.'</p>';
-						$ajaxResponse .= '<p>Camera: '.$photoDetails['Make'].'</p>';
-						$ajaxResponse .= '<p>Model: '.$photoDetails['Model'].'</p>';
-						$ajaxResponse .= '<p>File Type: '.$photoDetails['MimeType'].'</p>';
-						$ajaxResponse .= '<p>Exposure: '.$photoDetails['ExposureTime'].'</p>';
-						$ajaxResponse .= '<p>FNumber: '.$photoDetails['FNumber'].'</p>';
-						$ajaxResponse .= '<p>ISO: '.$photoDetails['ISOSpeedRatings'].'</p>';
-						$ajaxResponse .= '<p>Shutter: '.$photoDetails['ShutterSpeedValue'].'</p>';
-						$ajaxResponse .= '<p>Flash: '.$photoDetails['Flash'].'</p>';
-					$ajaxResponse .= '</div>';
-				$ajaxResponse .= '</div>';
-
-
-				// return ajax response and terminate
-				die($ajaxResponse);
-			}
-
-
-			/**
-			 * CALLBACK FUNCTION TO SEND TEST ADMIT EMAIL
-			 */
-			public function testAdmitEmail()
-			{
-				$currentUser = wp_get_current_user();
-
-				// connect to SendGrid API
-				$sendgrid = new SendGrid(get_option('sendgrid_user'), get_option('sendgrid_pwd'));
-
-				// create new email
-				$email = new SendGrid\Email();
-
-				// add recipient email
-				$email->addTo($currentUser->user_email, $currentUser->user_firstname.' '.$currentUser->user_lastname)
-					  ->setFrom("wppc@".str_replace('www.', '', $_SERVER['SERVER_NAME']))
-					  ->setFromName(get_bloginfo())
-					  ->setSubject(esc_attr($_POST['subject']))
-					  ->setHtml(wp_kses($_POST['body'], $this->expanded_alowed_tags()));
-
-				// send email to user
-				$sendgrid->send($email);
-				
-				// ajax response
-				$ajaxResponse = ' Email sent to '.$currentUser->user_email;
-				
-				// return ajax response and terminate
-				die($ajaxResponse);
-			}
 		}
-
 	endif;
 
 
@@ -650,6 +519,80 @@
 			</form>
 		</div>
 		<?php
+	}
+
+
+
+	// Get voters action
+	add_action('wp_ajax_view-photo-voters', 'viewPhotoVoters');
+	function viewPhotoVoters()
+	{
+		global $wpdb;
+
+		// get photo id;
+		$photoID = $_GET['photoid'];
+		
+		// get voters
+		$votes = $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_CONTESTS_VOTES." WHERE photo_id=".$photoID);
+
+		// create ajax response
+		$ajaxResponse = array();
+
+		foreach ($votes as $vote)
+			$ajaxResponse[] = array(
+				'ip'	=> long2ip($vote->vote_ip),
+				'votes'	=> $vote->vote_number
+			);
+
+		// return ajax response and terminate
+		die(json_encode($ajaxResponse));
+	}
+
+	// Get photo specs action
+	add_action('wp_ajax_view-photo-specs', 'viewPhotoSpecs');
+	function viewPhotoSpecs()
+	{
+		global $wpdb;
+
+		// security check
+		if (!wp_verify_nonce($_GET['nonce'], WPPC_NONCE))
+			die(__("Security check failed"));
+
+		// get photo url
+		$photo = $_GET['photo'];
+		
+		// get photo upload date from db
+		$dbPhoto = $wpdb->get_row("SELECT upload_date, contest_id, competitor_photo FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE photo_id=$photo");
+
+		$photo = urldecode($_GET['photoURL']).$dbPhoto->competitor_photo;
+
+		// get photo specs
+		$photoDetails = exif_read_data($photo);
+		$primaryDetails = array('FileName', 'DateTimeOriginal', 'Make', 'Model', 'MimeType', 'ExposureTime', 'FNumber', 'ISOSpeedRatings', 'ShutterSpeedValue', 'Flash');
+
+		// create ajax response
+		$ajaxResponse = '<div>';
+			$ajaxResponse .= '<div class="entered-photo" style="display: table-cell; width: 50%; vertical-align: top; padding: 3rem;">';
+				$ajaxResponse .= '<img src="'.$photo.'" style="max-width: 100%;" />';
+			$ajaxResponse .= '</div>';
+			$ajaxResponse .= '<div class="details-photo" style="display: table-cell; width: 50%; vertical-align: top; padding: 3rem;">';
+				if (array_key_exists('FileName', $photoDetails)) $ajaxResponse .= '<p>Filename: '.$photoDetails['FileName'].'</p>';
+				if (array_key_exists('Width', $photoDetails['COMPUTED'])) $ajaxResponse .= '<p>Dimensions: '.$photoDetails['COMPUTED']['Width'].'px x '.$photoDetails['COMPUTED']['Height'].'px</p>';
+				if (array_key_exists('DateTimeOriginal', $photoDetails)) $ajaxResponse .= '<p>Original DateTime: '.$photoDetails['DateTimeOriginal'].'</p>';
+				$ajaxResponse .= '<p>Upload DateTime: '.$dbPhoto->upload_date.'</p>';
+				if (array_key_exists('Make', $photoDetails)) $ajaxResponse .= '<p>Camera: '.$photoDetails['Make'].'</p>';
+				if (array_key_exists('Model', $photoDetails)) $ajaxResponse .= '<p>Model: '.$photoDetails['Model'].'</p>';
+				if (array_key_exists('MimeType', $photoDetails)) $ajaxResponse .= '<p>File Type: '.$photoDetails['MimeType'].'</p>';
+				if (array_key_exists('ExposureTime', $photoDetails)) $ajaxResponse .= '<p>Exposure: '.$photoDetails['ExposureTime'].'</p>';
+				if (array_key_exists('FNumber', $photoDetails)) $ajaxResponse .= '<p>FNumber: '.$photoDetails['FNumber'].'</p>';
+				if (array_key_exists('ISOSpeedRatings', $photoDetails)) $ajaxResponse .= '<p>ISO: '.$photoDetails['ISOSpeedRatings'].'</p>';
+				if (array_key_exists("ShutterSpeedValue", $photoDetails)) $ajaxResponse .= '<p>Shutter: '.$photoDetails['ShutterSpeedValue'].'</p>';
+				if (array_key_exists('Flash', $photoDetails)) $ajaxResponse .= '<p>Flash: '.$photoDetails['Flash'].'</p>';
+			$ajaxResponse .= '</div>';
+		$ajaxResponse .= '</div>';
+
+		// return ajax response and terminate
+		die($ajaxResponse);
 	}
 
 ?>

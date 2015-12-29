@@ -21,7 +21,7 @@
 				parent::__construct(array(
 					'singular'	=> __('contest', 'text-domain'),
 					'plural'	=> __('contests', 'text-domain'),
-					'ajax'		=> true
+					'ajax'		=> false
 				));
 			}
 
