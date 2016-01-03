@@ -522,7 +522,7 @@
 								<?php if ($contestWinners['text'] != ''): ?><li style="display: inline; margin-right: 2rem;"><a href="#contest-winners">Winners</a></li><?php endif; ?>
 								<?php if ($contest->contest_rules != ''): ?><li style="display: inline; margin-right: 2rem;"><a href="#contest-rules">Rules</a></li><?php endif; ?>
 								<?php if ($contest->contest_prizes != ''): ?><li style="display: inline; margin-right: 2rem;"><a href="#contest-prizes">Prizes</a></li><?php endif; ?>
-								<?php if ($contest->start_date <= date('Y-m-d h:m:s', time()) && date('Y-m-d h:m:s', time()) <= $contest->end_registration): ?><li style="display: inline; margin-right: 2rem;"><a href="#contest-entry-form">Entry form</a></li><?php endif; ?>
+								<?php if ($contest->start_date <= date('Y-m-d h:m:s', time()) && date('Y-m-d h:m:s', time()) <= date('Y-m-d', strtotime('+1 day' , strtotime($contest->end_registration)))): ?><li style="display: inline; margin-right: 2rem;"><a href="#contest-entry-form">Entry form</a></li><?php endif; ?>
 								<?php if ($contest->contest_contact != ''): ?><li style="display: inline; margin-right: 2rem;"><a href="#contest-contact">Contact</a></li><?php endif; ?>
 							</ul>
 							
@@ -657,22 +657,22 @@
 						/* CONTEST PRIZES */
 						if ($contest->contest_prizes != ''):
 							echo '<div id="contest-prizes">';
-						echo $this->formatContent($contest->contest_prizes);
-						echo '</div>';
+							echo $this->formatContent($contest->contest_prizes);
+							echo '</div>';
 						endif;
 
 						/* CONTEST ENTRY FORM */
-						if ($contest->start_date <= date('Y-m-d h:m:s', time()) && date('Y-m-d h:m:s', time()) <= $contest->end_registration):
+						if ($contest->start_date <= date('Y-m-d h:m:s', time()) && date('Y-m-d h:m:s', time()) <= date('Y-m-d', strtotime('+1 day' , strtotime($contest->end_registration)))):
 							echo '<div id="contest-entry-form">';
-						$this->setEntryForm($contest->id, $contest->contest_entry_form);
-						echo '</div>';
+							$this->setEntryForm($contest->id, $contest->contest_entry_form);
+							echo '</div>';
 						endif;
 
 						/* CONTEST CONTACT */
 						if ($contest->contest_contact != ''):
 							echo '<div id="contest-contact">';
-						echo $contest->contest_contact;
-						echo '</div>';
+							echo $contest->contest_contact;
+							echo '</div>';
 						endif; ?>
 					</div> <!-- end contest-tabs -->
 				</div> <!-- end wppc-main -->
