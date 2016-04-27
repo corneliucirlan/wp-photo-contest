@@ -1,34 +1,38 @@
 <?php
 
-	// SECURITY CHECK
+	// Security check
 	if (!defined('ABSPATH')) die;
 
-	// CREATE CLASS
+	// Define class
 	if (!class_exists('WPPCContest')):
 		class WPPCContest 
 		{
 			/**
-			 * CONSTRUCTOR
+			 * Class constructor
+			 *
+			 * @since 1.0
 			 */
 			public function __construct()
 			{
-				// load admin scripts
+				// Load admin scripts
 				add_action('admin_enqueue_scripts', array($this, 'enqueueAdminScripts'));				 
 
-				// add menu page
+				// Add menu page
 				add_action('admin_menu', array($this, 'renderMenuItems')); 
 				
 				// SAVE/UPDATE NEW CONTEST IN THE DATABASE
 				//add_action('admin_post_save-wp-photo-contest', array($this, 'saveWPPContest'));
 				//do_action("admin_post_save-wp-photo-contest");
 
-				// AJAX CALL TO TEST ADMIT EMAIL
+				// Ajax callback to test photo admit
 				add_action('wp_ajax_test-admit-email', array($this, 'testAdmitEmail'));
 			}
 
 
 			/**
-			 * CALLBACK FUNCTION TO RENDER MENU ITEMS
+			 * Render admin menu item
+			 *
+			 * @since 1.0
 			 */
 			public function renderMenuItems()
 			{
@@ -37,41 +41,53 @@
 
 
 			/**
-			 * CALLBACK FUNCTION TO ENQUEUE ADMIN SCRIPTS
+			 * Enqueue admin scripts
+			 *
+			 * @since 1.0
 			 */
 			public function enqueueAdminScripts()
 			{
-				// LOAD JQUERY & AJAX CALLBACKS
-				wp_enqueue_script('jquery','','','',true);
-				wp_enqueue_script('jquery-ui-core','','','',true);
-				wp_enqueue_script('jquery-ui-tabs','','','',true);
+				// jQuery core
+				wp_enqueue_script('jquery', '', '', '', true);
+				
+				// jQuery UI core
+				wp_enqueue_script('jquery-ui-core', array('jquery'), '', '',true);
+
+				// jQuery UI Tabs
+				wp_enqueue_script('jquery-ui-tabs', array('jquery-ui-core'), '', '', true);
+				
+				// Ajax callbacks script
 				wp_enqueue_script('wppc-contest-js', WPPC_URI.'js/wppc-contest.js', array('jquery'), WPPC_VERSION, true);
 			}
 
 
 			/**
-			 * CALLBACK FUNCTION TO PRINT CONTEST PAGE
+			 * Render new contest/edit existing contest
+			 *
+			 * @since 1.0
 			 */
 			public function renderPage()
 			{
 				?>
 				<div class="wrap">
-					<?php $this->setTitle() ?>
-
 					<?php
-						if (!isset($_GET['contest'])) $this->editContest();
-							else
+						$this->setTitle();
+
+						if (!isset($_GET['contest'])):
+								$this->editContest();
+							else:
 								switch ($_GET['activity']):
 
-									// EDIT CONTEST
+									// Edit contest
 									case 'edit': $this->editContest(); break;
 
-									// CONTEST STATS
+									// Contest stats
 									case 'stats': $this->viewStats(); break;
 
-									// DEFAULT - NEW CONTEST
+									// New contest
 									default: $this->editContest(); break;
 								endswitch;
+						endif;
 					?>
 				</div>
 				<?php
@@ -79,41 +95,47 @@
 
 
 			/**
-			 * SET TITLE
+			 * Set page title
+			 *
+			 * @since 1.0
 			 */
 			private function setTitle()
 			{
 				global $wpdb;
 
 				echo '<h2>';
-				if (!isset($_GET['contest']))
-					_e("New Contest");
-					else
+				if (!isset($_GET['contest'])):
+						_e("New Contest");
+					else:
 						switch ($_GET['activity']):
 
-							// EDIT CONTEST
+							// Edit contest
 							case 'edit': echo __("Edit").' <strong>'.__($wpdb->get_var("SELECT contest_name FROM ".WPPC_TABLE_ALL_CONTESTS." WHERE id=".$_GET['contest'])).'</strong> '.__('Contest'); break;
 
-							// CONTEST STATS
+							// Contest stats
 							case 'stats': echo __("View").' <strong>'.__($wpdb->get_var("SELECT contest_name FROM ".WPPC_TABLE_ALL_CONTESTS." WHERE id=".$_GET['contest'])).'</strong> '.__('Stats'); break;
 
-							// DEFAULT - NEW CONTEST
-							_e("New Contest");
+							// Default: New contest
+							default: _e("New Contest"); break;
 						endswitch;
+				endif;
 				echo '</h2>';
 			}
 
 
 			/**
-			 * EDIT CONTEST DETAILS
+			 * Edit contest
+			 *
+			 * @since 1.0
 			 */
 			private function editContest()
 			{
 				global $wpdb;
 				
+				// Get contest if set
 				if (isset($_GET['contest'])) $contest = $wpdb->get_row("SELECT * FROM ".WPPC_TABLE_ALL_CONTESTS." WHERE id=".$_GET['contest']);
 
-				// get all dates to validate				
+				// Validate all dates				
 				$contestStartDate = isset($_POST['start-date']) ? explode("-", $_POST['start-date']) : '';
 				$contestEndRegistration = isset($_POST['end-registration']) ? explode("-", $_POST['end-registration']) : '';
 				$contestEndVote = isset($_POST['end-vote']) ? explode("-", $_POST['end-vote']) : '';
@@ -135,10 +157,10 @@
 					if (checkdate($contestEndDate[1], $contestEndDate[2], $contestEndDate[0]))
 						$validEndDate = true;
 				
-				// get current contest photos
+				// Get current contest photos
 				$photos = isset($_GET['contest']) ? $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE contest_id='".$_GET['contest']."' AND visible=".WPPC_PHOTO_APPROVED) : array();
 
-				// unserialize data
+				// Unserialize data
 				$contestWinners = isset($_GET['contest']) && $contest->contest_winners != '' ? unserialize($contest->contest_winners) : array();
 				$contestEmails = isset($_GET['contest']) && $contest->contest_emails != '' ? unserialize($contest->contest_emails) : array();
 				$contestRules = isset($_GET['contest']) && $contest->contest_rules != '' ? unserialize($contest->contest_rules) : array();
@@ -157,7 +179,8 @@
 						<div id="general">
 							<table class="form-table">
 								<tbody>
-									<!-- CONTEST NAME -->
+				
+									<!-- Contest name -->
 									<tr <?php $_POST && isset($_POST['name']) == '' && !isset($_GET['contest']) ? printf('class="form-invalid"') : '' ?>>
 										<th scope="row">Contest name</th>
 										<td>
@@ -166,7 +189,7 @@
 										</td>
 									</tr>
 
-									<!-- CONTEST START DATE -->
+									<!-- Contest start -->
 									<tr <?php $_POST && !isset($_GET['contest']) && (isset($_POST['start-date']) == '' || !$validStartDate) ? printf('class="form-invalid"') : '' ?>>
 										<th scope="row">Start date</th>
 										<td>
@@ -175,7 +198,7 @@
 										</td>
 									</tr>
 
-									<!-- CONTEST END REGISTRATION -->
+									<!-- Contest end registration -->
 									<tr <?php $_POST && !isset($_GET['contest']) && (isset($_POST['end-registration']) == '' || !$validEndRegistration) ? printf('class="form-invalid"') : '' ?>>
 										<th scope="row">Registration end</th>
 										<td>
@@ -184,7 +207,7 @@
 										</td>
 									</tr>
 
-									<!-- CONTEST END VOTE -->
+									<!-- Contest end vote -->
 									<tr <?php $_POST && !isset($_GET['contest']) && (isset($_POST['end-vote']) == '' || !$validEndVote) ? printf('class="form-invalid"') : '' ?>>
 										<th scope="row">Vote end</th>
 										<td>
@@ -193,7 +216,7 @@
 										</td>
 									</tr>
 
-									<!-- CONTEST END DATE -->
+									<!-- Contest end -->
 									<tr <?php $_POST && !isset($_GET['contest']) && (isset($_POST['end-date']) == '' || !$validEndDate) ? printf('class="form-invalid"') : '' ?>>
 										<th scope="row">End date</th>
 										<td>
@@ -202,7 +225,7 @@
 										</td>
 									</tr>
 
-									<!-- CONTEST PHOTOS ALLOWED -->
+									<!-- Photos allowed -->
 									<tr <?php $_POST && !isset($_GET['contest']) && isset($_POST['photos-allowed']) <= 0 ? printf('class="form-invalid"') : '' ?>>
 										<th scope="row">Number of photos</th>
 										<td>
@@ -211,7 +234,7 @@
 										</td>
 									</tr>
 
-									<!-- CONTEST MOBILE PHOTOS ALLOWED -->
+									<!-- Mobile photos allowed -->
 									<tr <?php $_POST && !isset($_GET['contest']) && isset($_POST['photos-mobile-allowed']) <= 0 ? printf('class="form-invalid"') : '' ?>>
 										<th scope="row">Number of mobile photos</th>
 										<td>
@@ -220,7 +243,7 @@
 										</td>
 									</tr>
 
-									<!-- CONTEST VOTES ALLOWED -->
+									<!-- Votes allowed -->
 									<tr <?php $_POST && !isset($_GET['contest']) && isset($_POST['votes-allowed']) <= 0 ? printf('class="form-invalid"') : '' ?>>
 										<th scope="row">Votes allowed</th>
 										<td>
@@ -229,7 +252,7 @@
 										</td>
 									</tr>
 
-									<!-- CONTEST FIRST POINT -->
+									<!-- First point -->
 									<tr <?php $_POST && !isset($_GET['contest']) && isset($_POST['first-point']) <= 0 ? printf('class="form-invalid"') : '' ?>>
 										<th scope="row">First point at</th>
 										<td>
@@ -238,7 +261,7 @@
 										</td>
 									</tr>
 
-									<!-- CONTEST SECOND POINT -->
+									<!-- Second point -->
 									<tr <?php $_POST && !isset($_GET['contest']) && isset($_POST['second-point']) <= 0 ? printf('class="form-invalid"') : '' ?>>
 										<th scope="row">Second point at</th>
 										<td>
@@ -247,7 +270,7 @@
 										</td>
 									</tr>
 
-									<!-- CONTEST THIRD POINT -->
+									<!-- Third point -->
 									<tr <?php $_POST && !isset($_GET['contest']) && isset($_POST['third-point']) <= 0 ? printf('class="form-invalid"') : '' ?>>
 										<th scope="row">Third point at</th>
 										<td>
@@ -256,7 +279,7 @@
 										</td>
 									</tr>
 
-									<!-- CONTEST FORTH POINT -->
+									<!-- Forth point -->
 									<tr <?php $_POST && !isset($_GET['contest']) && isset($_POST['forth-point']) <= 0 ? printf('class="form-invalid"') : '' ?>>
 										<th scope="row">Forth point at</th>
 										<td>
@@ -265,7 +288,7 @@
 										</td>
 									</tr>
 
-									<!-- CONTEST FIFTH POINT -->
+									<!-- Fifth point -->
 									<tr <?php $_POST && !isset($_GET['contest']) && isset($_POST['fifth-point']) <= 0 ? printf('class="form-invalid"') : '' ?>>
 										<th scope="row">Fifth point at</th>
 										<td>
@@ -274,7 +297,7 @@
 										</td>
 									</tr>
 
-									<!-- CONTEST SOCIAL DESCRIPTION -->
+									<!-- Social description -->
 									<tr>
 										<th scope="row">Social Description</td>
 											<td>
@@ -286,11 +309,12 @@
 								</table>
 							</div>
 
-							<!-- CONTEST TABS -->
+							<!-- Contest tabs -->
 							<idv id="contest-tabs">
 								<table class="form-table">
 									<tbody>
-										<!-- CONTEST ABOUT TAB -->
+
+										<!-- About tab -->
 										<tr>
 											<th scope="row">About Tab</th>
 											<td>
@@ -303,7 +327,7 @@
 											</td>
 										</tr>
 
-										<!-- CONTEST PHOTO GALLERY TAB -->
+										<!-- Photo gallery tab -->
 										<tr>
 											<th class="row">Photo Gallery Tab</th>
 											<td>
@@ -316,7 +340,7 @@
 											</td>
 										</tr>
 
-										<!-- CONTEST WINNERS TAB -->
+										<!-- Winners tab -->
 										<tr>
 											<th class="row">Winners Tab</th>
 											<td>
@@ -329,7 +353,7 @@
 											</td>
 										</tr>
 
-										<!-- CONTEST EN RULES -->
+										<!-- English rules -->
 										<tr>
 											<th class="row">English Rules</th>
 											<td>
@@ -342,7 +366,7 @@
 											</td>
 										</tr>
 
-										<!-- CONTEST RO RULES -->
+										<!-- Romanian rules -->
 										<tr>
 											<th class="row">Romanian Rules</th>
 											<td>
@@ -355,7 +379,7 @@
 											</td>
 										</tr>
 
-										<!-- CONTEST PRIZES TAB -->
+										<!-- Prizes tab -->
 										<tr>
 											<th class="row">Prizes Tab</th>
 											<td>
@@ -368,7 +392,7 @@
 											</td>
 										</tr>
 
-										<!-- CONTEST ENTRY FORM TAB -->
+										<!-- Entry form tab -->
 										<tr>
 											<th class="row">Entry Form Tab</th>
 											<td>
@@ -381,7 +405,7 @@
 											</td>
 										</tr>
 
-										<!-- CONTEST CONTACT TAB -->
+										<!-- Contact tab -->
 										<tr>
 											<th class="row">Contact Tab</th>
 											<td>
@@ -397,7 +421,7 @@
 								</table>
 							</idv>
 
-							<!-- CONTEST SIDEBAR TAB -->
+							<!-- Sidebar -->
 							<div id="sidebar">
 								<table class="form-table">
 									<tbody>
@@ -416,7 +440,7 @@
 								</table>
 							</div>
 
-							<!-- CONTEST EMAILS -->
+							<!-- Emails -->
 							<div id="emails">
 								<table class="form-table">
 									<h3 style="text-align: center;">PHOTO ADMITTED</h3>
@@ -443,84 +467,85 @@
 								</table>
 							</div>
 
-							<!-- SELECT WINNERS -->
+							<!-- Select winners -->
 							<?php if (isset($_GET['contest'])): ?>
 								<div id="select-winners">
 									<table class="form-table">
-										<!-- FIRST PRIZE -->
+							
+										<!-- First place -->
 										<tr>
 											<th class="row">First place</th>
 											<td>
 												<select name="first-winner" id="first-winner">
 													<option value="0"<?php echo $contestWinners['first-winner'] == 0 ? ' selected' : '' ?>>Select</option>
 													<?php
-													foreach ($photos as $photo):
-														$selected = $contestWinners['first-winner'] == $photo->photo_id ? ' selected' : '';
-													echo '<option value="'.$photo->photo_id.'"'.$selected.'>'.$photo->photo_name.' by '.$photo->competitor_name.'</option>';
-													endforeach;
+														foreach ($photos as $photo):
+															$selected = $contestWinners['first-winner'] == $photo->photo_id ? ' selected' : '';
+															echo '<option value="'.$photo->photo_id.'"'.$selected.'>'.$photo->photo_name.' by '.$photo->competitor_name.'</option>';
+														endforeach;
 													?>
 												</select>
 											</td>
 										</tr>
 
-										<!-- SECOND PRIZE -->
+										<!-- Second place -->
 										<tr>
 											<th class="row">Second place</th>
 											<td>
 												<select name="second-winner" id="second-winner">
 													<option value="0"<?php echo $contestWinners['second-winner'] == 0 ? ' selected' : '' ?>>Select</option>
 													<?php
-													foreach ($photos as $photo):
-														$selected = $contestWinners['second-winner'] == $photo->photo_id ? ' selected' : '';
-													echo '<option value="'.$photo->photo_id.'"'.$selected.'>'.$photo->photo_name.' by '.$photo->competitor_name.'</option>';
-													endforeach;
+														foreach ($photos as $photo):
+															$selected = $contestWinners['second-winner'] == $photo->photo_id ? ' selected' : '';
+															echo '<option value="'.$photo->photo_id.'"'.$selected.'>'.$photo->photo_name.' by '.$photo->competitor_name.'</option>';
+														endforeach;
 													?>
 												</select>
 											</td>
 										</tr>
 
-										<!-- THIRD PRIZE -->
+										<!-- Third place -->
 										<tr>
 											<th class="row">Third place</th>
 											<td>
 												<select name="third-winner" id="third-winner">
 													<option value="0"<?php echo $contestWinners['third-winner'] == 0 ? ' selected' : '' ?>>Select</option>
 													<?php
-													foreach ($photos as $photo):
-														$selected = $contestWinners['third-winner'] == $photo->photo_id ? ' selected' : '';
-													echo '<option value="'.$photo->photo_id.'"'.$selected.'>'.$photo->photo_name.' by '.$photo->competitor_name.'</option>';
-													endforeach;
+														foreach ($photos as $photo):
+															$selected = $contestWinners['third-winner'] == $photo->photo_id ? ' selected' : '';
+															echo '<option value="'.$photo->photo_id.'"'.$selected.'>'.$photo->photo_name.' by '.$photo->competitor_name.'</option>';
+														endforeach;
 													?>
 												</select>
 											</td>
 										</tr>
 
-										<!-- SPECIAL PRIZE -->
+										<!-- Special place -->
 										<tr>
 											<th class="row">Special place</th>
 											<td>
 												<select name="special-winner" id="special-winner">
 													<option value="0"<?php echo $contestWinners['special-winner'] == 0 ? ' selected' : '' ?>>Select</option>
 													<?php
-													foreach ($photos as $photo):
-														$selected = $contestWinners['special-winner'] == $photo->photo_id ? ' selected' : '';
-													echo '<option value="'.$photo->photo_id.'"'.$selected.'>'.$photo->photo_name.' by '.$photo->competitor_name.'</option>';
-													endforeach;
+														foreach ($photos as $photo):
+															$selected = $contestWinners['special-winner'] == $photo->photo_id ? ' selected' : '';
+															echo '<option value="'.$photo->photo_id.'"'.$selected.'>'.$photo->photo_name.' by '.$photo->competitor_name.'</option>';
+														endforeach;
 													?>
 												</select>
 											</td>
 										</tr>
 
-										<!-- OUR FAVORITES -->
+										<!-- Our favorites -->
 										<tr>
 											<th class="row">Our favorites</th>
 											<td>
 												<select name="our-favorites[]" multiple>
 													<?php
-													foreach ($photos as $photo):
-														$selected = is_array($contestWinners['our-favorites']) && in_array($photo->photo_id, $contestWinners['our-favorites']) ? ' selected' : '';
-													echo '<option value="'.$photo->photo_id.'"'.$selected.'>'.$photo->photo_name.' by '.$photo->competitor_name.'</option>';
-													endforeach;
+														foreach ($photos as $photo):
+															$selected = is_array($contestWinners['our-favorites']) && in_array($photo->photo_id, $contestWinners['our-favorites']) ? ' selected' : '';
+															echo '<option value="'.$photo->photo_id.'"'.$selected.'>'.$photo->photo_name.' by '.$photo->competitor_name.'</option>';
+														endforeach;
 													?>
 												</select>
 											</td>
@@ -529,14 +554,14 @@
 								</div>
 							<?php endif; ?>
 
-							<!-- SUBMIT BUTTON -->
+							<!-- Save contest -->
 							<input type="hidden" name="action" value="save-wp-photo-contest" />
 							<?php
-							if (isset($_GET['contest'])):
-									?><input type="submit" name="addNewContest" id="addNewContest" class="button button-primary" value="Update Contest" /><?php
-								else:
-									?><input type="submit" name="addNewContest" id="addNewContest" class="button button-primary" value="Add Contest" /><?php
-							endif;
+								if (isset($_GET['contest'])):
+										?><input type="submit" name="addNewContest" id="addNewContest" class="button button-primary" value="Update Contest" /><?php
+									else:
+										?><input type="submit" name="addNewContest" id="addNewContest" class="button button-primary" value="Add Contest" /><?php
+								endif;
 							?>
 						</form>
 					</div>
@@ -545,26 +570,28 @@
 
 
 			/**
-			 * VIEW CONTEST STATS
+			 * Contest stats
+			 *
+			 * @since 1.0
 			 */
 			private function viewStats()
 			{
 				global $wpdb;
 
-				// total # of photos
+				// Total # of photos
 				$totalPhotos = $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_CONTESTS_ENTRIES." WHERE contest_id=".$_GET['contest']);
 
-				// total # of approved photos
+				// Total # of approved photos
 				$approvedPhotos = 0;
 
-				// total contestants
+				// Total contestants
 				$contestants = 0;
 				$contestantsList = array();
 
-				// number of rejected photos
+				// Number of rejected photos
 				$trashedPhotos = 0;
 
-				// mobile photos
+				// Mobile photos
 				$mobilePhotos = 0;
 
 				foreach($totalPhotos as $photo):
@@ -577,16 +604,16 @@
 					if ($photo->photo_mobile == 1) $mobilePhotos++;
 				endforeach;
 
-				// total # of mobile devices photos
+				// Total # of mobile devices photos
 				$cameraPhotos = count($totalPhotos) - $mobilePhotos;
 
-				// total # of voters
+				// Total # of voters
 				$totalVoters = $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_CONTESTS_VOTES." WHERE contest_id=".$_GET['contest']);
 						
-				// total # of votes
+				// Total # of votes
 				$totalVotes = array();
 
-				// unique voters
+				// Unique voters
 				$uniqueVoters = array();
 
 				foreach ($totalVoters as $vote):
@@ -654,14 +681,15 @@
 
 
 			/**
-			 * CALLBACK FUNCTION TO ADD/EDIT CONTEST
+			 * Save contest
 			 */
 			public function saveWPPContest()
 			{
 				global $wpdb;
 
 				if ($_POST):
-					// CREATE CONTEST DATA ARRAY
+
+					// Create contest data array
 					$contestData = array(
 						'contest_name' 					=> isset($_POST['name']) ? esc_attr($_POST['name']) : '',
 						'start_date' 					=> isset($_POST['start-date']) ? $_POST['start-date'] : 0,
@@ -701,22 +729,22 @@
 															)),
 					);
 
-					// INSERT|UPDATE TABLE
+					// Insert/update contest
 					if (isset($_POST['addNewContest'])):
 						$id = 0;
 						
-						// UPDATE CONTEST
+						// Update contest
 						if (isset($_GET['contest'])):
 								$wpdb->update(WPPC_TABLE_ALL_CONTESTS, $contestData, array('id'=>$_GET['contest']));
 								$id = $_GET['contest'];
 							
-							// INSERT NEW CONTEST
+							// Insert new contest
 							else:
 								$wpdb->insert(WPPC_TABLE_ALL_CONTESTS, $contestData);
 								$id = $wpdb->insert_id;
 						endif;
 
-						// create folders for user uploads
+						// Create folders for user uploads
 						$upload_dir = wp_upload_dir();
 						$dir = $upload_dir['basedir'].'/wppc-photos/wppc-photos-'.$id.'/';
 						if (!is_dir($dir))
@@ -739,38 +767,41 @@
 
 
 			/**
-			 * CALLBACK FUNCTION TO SEND TEST ADMIT EMAIL
+			 * Send test admit email
+			 *
+			 * @since 1.0
 			 */
 			public function testAdmitEmail()
 			{
+				// Get current user
 				$currentUser = wp_get_current_user();
 
-				// connect to SendGrid API
-				$sendgrid = new SendGrid(get_option('sendgrid_user'), get_option('sendgrid_pwd'));
+				// Create email
+				$to = $currentUser->user_email;
+				$subject = esc_attr($_POST['admitted-subject']);
+				$message = esc_attr($_POST['admitted-body']);
+				$headers   = array();
+				$headers[] = "MIME-Version: 1.0";
+				$headers[] = "Content-type: text/html; charset=utf-8";
+				$headers[] = "From: {get_bloginfo()} <wppc@".str_replace('www.', '', $_SERVER['SERVER_NAME']).">";
+				$headers[] = "Subject: {$subject}";
+				$headers[] = "X-Mailer: PHP/".phpversion();
 
-				// create new email
-				$email = new SendGrid\Email();
-
-				// add recipient email
-				$email->addTo($currentUser->user_email, $currentUser->user_firstname.' '.$currentUser->user_lastname)
-					  ->setFrom("wppc@".str_replace('www.', '', $_SERVER['SERVER_NAME']))
-					  ->setFromName(get_bloginfo())
-					  ->setSubject(esc_attr($_POST['subject']))
-					  ->setHtml(wp_kses($_POST['body'], $this->expanded_alowed_tags()));
-
-				// send email to user
-				$sendgrid->send($email);
+				// Send email
+				$emailResponse = wp_mail($to, $subject, $message, $headers);
 				
-				// ajax response
+				// Ajax response
 				$ajaxResponse = ' Email sent to '.$currentUser->user_email;
 				
-				// return ajax response and terminate
-				die($ajaxResponse);
+				// Return ajax response and terminate
+				die($emailResponse);
 			}
 
 
 			/**
-		     * EXPAND ALLOWED HTML TAGS
+		     * Expand allowed HTML tags
+		     *
+		     * @since 1.0
 		     */
 		    function expanded_alowed_tags() 
 			{
@@ -822,7 +853,9 @@
 
 
 			/**
-			 * FORMAT CONTENT
+			 * Format content
+			 *
+			 * @since 1.0
 			 */
 			private function formatContent($content)
 			{
@@ -836,7 +869,7 @@
 				return $content;
 			}
 
-		} // END CLASS
+		}
 	endif;
 
 ?>

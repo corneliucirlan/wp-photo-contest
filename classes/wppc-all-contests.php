@@ -1,17 +1,20 @@
 <?php
 
-	// SECURITY CHECK
+	// Security check
 	if (!defined('ABSPATH')) die;
 	
-	// PRE-REQUIREMENTS
+	// Pre-requirements
 	if (!class_exists('WP_List_Table'))
 	    require_once(ABSPATH.'wp-admin/includes/class-wp-list-table.php');
 
+	// Define class
 	if (!class_exists('WPPCAllContests')):
 		class WPPCAllContests extends WP_List_Table
 		{
 			/**
-			 * CONSTRUCTOR
+			 * Class constructor
+			 *
+			 * @since 1.0
 			 */
 			public function __construct()
 			{
@@ -25,9 +28,10 @@
 				));
 			}
 
-
 			/**
-			 * SET COLUMNS AND TITLES
+			 * Set columns
+			 *
+			 * @since 1.0
 			 */
 			public function get_columns()
 			{
@@ -44,27 +48,30 @@
 		        return $columns;
 			}
 
-
 			/**
-			 * GENERAL FUNCTION FOR RENDERING COLUMNS
+			 * Fallback function to render columns
+			 *
+			 * @since 1.0
 			 */
 			public function column_default($item, $column_name)
 			{
 				return $item[$column_name];
 			}
 
-
 			/**
-			 * CHECKBOX COLUMN
+			 * Checkbox column
+			 *
+			 * @since 1.0
 			 */
 			public function column_cb($item)
 			{
 				return sprintf('<input type="checkbox" name="%1$s[]" value="%2$s" />', $this->_args['singular'], $item['id']);
 			}
 
-
 			/**
-			 * CONTEST NAME COLUMN
+			 * Contest name column
+			 *
+			 * @since 1.0
 			 */
 			public function column_contest_name($item)
 			{
@@ -87,18 +94,20 @@
 		        return sprintf('%1$s %2$s', $title, $this->row_actions($actions));
 			}
 
-
 			/**
-			 * SHORTCODE COLUMN
+			 * Shortcode column
+			 *
+			 * @since 1.0
 			 */
 			public function column_shortcode($item)
 			{
 				return sprintf('<code>[wphotocontest id=%s]</code>', $item['id']);
 			}
 
-
 			/**
-		     * SET SORTABLE COLUMNS
+		     * Set sortable columns
+		     *
+		     * @since 1.0
 		     */
 		    public function get_sortable_columns()
 		    {
@@ -113,9 +122,10 @@
 		        return $sortable_columns;
 		    }
 
-
 		    /**
-		     * GET VIEWS
+		     * Set views
+		     *
+		     * @since 1.0
 		     */
 		    public function get_views()
 		    {
@@ -144,9 +154,10 @@
 				return $views;
 		    }
 
-
 		    /**
-		     * GET BULK ACTIONS
+		     * Set bulk actions
+		     *
+		     * @since 1.0
 		     */
 		    public function get_bulk_actions()
 		    {
@@ -158,18 +169,18 @@
 		    	return $actions;
 		    }
 
-
 		    /**
-		     * PROCESS BULK ACTIONS
+		     * Process bulk actions
+		     *
+		     * @since 1.0
 		     */
 		    public function process_bulk_action()
 		    {
 		    	global $wpdb;
-
 				
 				switch ($this->current_action()):
 
-					// TRASH CONTESTS
+					// Trash contests
 		    		case 'trash':
 		    			if (!is_array($_GET['contest']))
 								$wpdb->update(WPPC_TABLE_ALL_CONTESTS, array('status' => 0), array('id' => $_GET['contest']));
@@ -177,14 +188,14 @@
 								$wpdb->update(WPPC_TABLE_ALL_CONTESTS, array('status' => 0), array('id' => $contest));
 						break;
 
-					// RESTORE CONTESTS
+					// Restore contests
 					case 'restore':
 			    		if (!is_array($_GET['contest'])) $wpdb->update(WPPC_TABLE_ALL_CONTESTS, array('status' => 1), array('id' => $_GET['contest']));
 			   				else foreach ($_GET['contest'] as $contest)
 			   					$wpdb->update(WPPC_TABLE_ALL_CONTESTS, array('status' => 1), array('id' => $contest));
 						break;
 
-					// DELETE CONTESTS
+					// Delete contests
 					case 'delete':
 						if (!is_array($_GET['contest'])):
 								// DELETE CONTEST
@@ -211,49 +222,49 @@
 						break;
 				
 				endswitch;
-		    		
 		    }
 
-
 			/**
-		     * PREPARE DATA FOR DISPLAY
+		     * Prepare data for rendering
+		     *
+		     * @since 1.0
 		     */
 		    public function prepare_items()
 		    {
-		        // how many records are to be shown on page
+		        // How many records are to be shown on page
 				$per_page = 20;
 
-				// columns array to be displayed
+				// Columns array to be displayed
 		        $columns = $this->get_columns();
 
-		        // columns array to be hidden
+		        // Columns array to be hidden
 		        $hidden = array();
 
-		        // list of sortable columns
+		        // List of sortable columns
 		        $sortable = $this->get_sortable_columns();
 		        
-		        // create the array that is used by the class
+		        // Create the array that is used by the class
 		        $this->_column_headers = array($columns, $hidden, $sortable);
 		        
-		        // process bulk actions
+		        // Process bulk actions
 		        $this->process_bulk_action();
 
-		       	// current page
+		       	// Current page
 		        $current_page = $this->get_pagenum();
 
-		        // get contests
+		        // Get contests
 		        $data = $this->getContests();
 		        
-		        // total number of items
+		        // Total number of items
 		        $total_items = count($data);
 		        
-		        // slice data for pagination
+		        // Slice data for pagination
 		        $data = array_slice($data, (($current_page-1)*$per_page), $per_page);
 		        
-		        // send processed data to the items property to be used
+		        // Send processed data to the items property to be used
 		        $this->items = $data;
 		        
-		        // register pagination options & calculations
+		        // Register pagination options & calculations
 		        $this->set_pagination_args(array(
 		            'total_items' => $total_items,                  //WE have to calculate the total number of items
 		            'per_page'    => $per_page,                     //WE have to determine how many items to show on a page
@@ -261,41 +272,43 @@
 		        ));
 		    }
 
-
 		    /**
-		     * GET CONTESTS
+		     * Get contests
+		     *
+		     * @since 1.0
 		     */
 		    private function getContests()
 		    {
 		    	global $wpdb;
 
-		    	// get item status
+		    	// Get item status
 		        $status = (!empty($_REQUEST['status']) ? $_REQUEST['status'] : 'publish');
 
-		        // get order params for the SQL query
+		        // Get order params for the SQL query
 				$orderby = (!empty($_REQUEST['orderby'])) ? $_REQUEST['orderby'] : 'id'; //If no sort, default to title
 				$order = (!empty($_REQUEST['order'])) ? $_REQUEST['order'] : 'DESC'; //If no order, default to asc
 
-		        // set where SQL
+		        // Set where SQL
 		        $where = 'WHERE ';
 		        if ($status == 'publish') $where .= 'status=1 AND ';
 		        	else $where .= 'status=0 AND ';
 
-		        // search SQL
+		        // Search SQL
 		        if (isset($_GET['s']))
 		        	$where .= 'contest_name LIKE "%'.esc_attr($_GET['s']).'%" AND';
 
 		        $where = rtrim($where, ' AND ');
 		        
-		        // return data from the db
+		        // Return data from the db
 		      	return $wpdb->get_results("SELECT * FROM ".WPPC_TABLE_ALL_CONTESTS." $where ORDER BY $orderby $order", ARRAY_A);
 		    }
 
-		} // end class
+		}
 	endif;
 
-
-
+	/**
+	 * Create menu page
+	 */
 	function addWPPCAllContests()
 	{
 		$hook = add_menu_page(__('WordPress Photo Contests'), __('Photo Contests'), 'manage_options', 'wppc-all-contests', 'displayWPPCAllContests', plugins_url('wp-photo-contest/img/icon_16.png'), 99);
@@ -305,7 +318,9 @@
 		add_action('load-'.$hook, 'addWPPCAllContestsOptions');
 	}
 
-	
+	/**
+	 * Create options screen
+	 */
 	function addWPPCAllContestsOptions()
 	{
 		global $allWPPCContests;
@@ -322,30 +337,32 @@
 	}
 	add_action('admin_menu', 'addWPPCAllContests');
 
-
 	/**
-	 * DISPLAY ALL WPPC CONTESTS
+	 * Render all contests
 	 */
 	function displayWPPCAllContests()
 	{
 		global $allWPPCContests;
 
-		//Fetch, prepare, sort, and filter our data...
+		// Fetch, prepare, sort, and filter the contests
 	    $allWPPCContests->prepare_items();
 		?>
+		
 		<div class="wrap">
 			<h2>
 				All Contests 
 				<a class="add-new-h2" href="?page=wppc-contest" title="Add New">Add New</a>
 			</h2>
 
-			<!-- Forms are NOT created automatically, so you need to wrap the table in one to use features like bulk actions -->
-	        <form id="bus-schedule-form" method="get" action="">
+			<form id="wppc-all-contests-form" method="get" action="">
 	        	<?php $allWPPCContests->views() ?>
-	        	<!-- search box -->
+	        
+	        	<!-- Search box -->
 	        	<?php $allWPPCContests->search_box('search', 'search_id') ?>
+	        
 	            <!-- For plugins, we also need to ensure that the form posts back to our current page -->
 	            <input type="hidden" name="page" value="<?php echo $_REQUEST['page'] ?>" />
+	        
 	            <!-- Now we can render the completed list table -->
 	            <?php $allWPPCContests->display() ?>
 	        </form>

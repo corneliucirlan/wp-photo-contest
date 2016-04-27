@@ -60,21 +60,18 @@ input[type=submit] {
 /**
  * SOCIAL BUTTONS
  */
-.wppc-social-buttons img:hover {
-	-webkit-transition: none !important;
-	-moz-transition: none !important;
-	-ms-transition: none !important;
-	-o-transition: none !important;
-	transition: none !important;
-	filter: none !important;
-	-webkit-filter: none !important;
+.wppc-share-buttons {
+	display: inline-block;
+	width: 100%;
+	list-style-type: none;
+	list-style-image: none;
+	padding-left: 0;
 }
 
-.wppc-share-button {
-	width: 60px !important;
-	height: 20px !important;
-	vertical-align: top;
-	cursor: pointer;
+.wppc-share-buttons > .wppc-share-button {
+	float: left;
+	text-align: center;
+	width: 33.3%;
 }
 
 @media screen and (max-width: 480px) {

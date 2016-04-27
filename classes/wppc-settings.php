@@ -1,84 +1,89 @@
 <?php
 
+	// Security check
+	if (!defined('ABSPATH')) die;
+
+	// Define class
 	if (!class_exists('WPPCSettings')):
 		class WPPCSettings
 		{
 			/**
-			 * WPPC GENERAL SETTINGS
+			 * General settings
+			 * 
 			 * @var array
+			 *
+			 * @since 1.0
 			 */
 			private $generalSettings;
 
 			/**
-			 * WPPC WATERMARK SETTINGS
+			 * Watermark settings
+			 * 
 			 * @var array
+			 *
+			 * @since 1.0
 			 */
 			private $watermarkSettings;
 
+
 			/**
-			 * SETTINGS CONSTRUCTOR
+			 * Class constructor
+			 *
+			 * @since 1.0
 			 */
 			public function __construct()
 			{
-				/**
-				 * ACTIVATE WPPC SETTINGS
-				 */
+				// Activation hook
 				register_activation_hook(__FILE__, array($this, 'activateWPPCSettings'));
 
-				/**
-				 * CHECK WPPC SETTINGS
-				 */
+				// Check existing settings
 				add_action('init', array($this, 'checkWPPCSettings'));
 
-				/**
-				 * LOAD SETTINGS
-				 */
+				// Load settings
 				$this->generalSettings = get_option(WPPC_SETTINGS_GENERAL);
 				$this->watermarkSettings = get_option(WPPC_SETTINGS_WATERMARK);
 
-				/**
-				 * INSERT "SETTINGS" INTO WPPC MENU
-				 */
+				// Register menu item
 				add_action('admin_menu', array($this, 'addWPPCSettings'));
 
-				/**
-				 * REGISTER WPPC SETTINGS
-				 */
+				// Register settings
 				add_action('admin_init', array($this, 'registerWPPCSettings'));
 			}
 
 			/**
-			 * CALLBACK FUNCTION ON PLUGIN ACTIVATION
+			 * Plugin activation
+			 *
+			 * @since 1.0
 			 */
 			public function activateWPPCSettings()
 			{
-				// create tables
+				// Create tables
 				$this->createTables();
 
-				// create general settings
+				// Create general settings
 				$general = array();
 				$general['version'] = WPPC_VERSION;
 				$general['deleteTables'] = 0;
-				$general['facebookAppId'] = '';
-				$general['loadFacebookJs'] = 0;
 				$general['timezone'] = 'UTC';
 				$general['notifyAdmins'] = 1;
 
-				// create watermark settings
+				// Create watermark settings
 				$watermark = array();
 				$watermark['watermarkTextSize'] = WPPC_WATERMARK_TEXT_SIZE;
 				$watermark['watermarkTextPosition'] = 'bottomRight';
 				$watermark['watermarkTextColor'] = 'white';
 
-				// add general settings
+				// Add general settings
 				add_option(WPPC_SETTINGS_GENERAL, $general);
 
-				// add watermark settings
+				// Add watermark settings
 				add_option(WPPC_SETTINGS_WATERMARK, $watermark);
 			}
 
 			/**
-			 * CALLBACK FUNCTION TO CHECK VERSION AND UPDATE DATABASE
+			 * Check existing settings
+			 *
+			 * @since 1.0
 			 */
 			public function checkWPPCSettings()
 			{
@@ -86,23 +91,22 @@
 				$watermark = get_option(WPPC_SETTINGS_WATERMARK) ? get_option(WPPC_SETTINGS_WATERMARK) : array();
 
 				if ($general['version'] != WPPC_VERSION):
-					// create or update tables
+					
+					// Create or update tables
 					$this->createTables();
 
-					// update general settings
+					// Update general settings
 					$general['version'] = WPPC_VERSION;
 					if (!array_key_exists('deleteTables', $general)) $general['deleteTables'] = 0;
-					if (!array_key_exists('facebookAppId', $general)) $general['facebookAppId'] = '';
-					if (!array_key_exists('loadFacebookJs', $general)) $general['loadFacebookJs'] = 0;
 					if (!array_key_exists('timezone', $general)) $general['timezone'] = 'UTC';
 					if (!array_key_exists('notifyAdmins', $general)) $general['notifyAdmins'] = 1;
 
-					// update watermark settings
+					// Update watermark settings
 					if (!array_key_exists('watermarkTextSize', $watermark)) $watermark['watermarkTextSize'] = WPPC_WATERMARK_TEXT_SIZE;
 					if (!array_key_exists('watermarkTextPosition', $watermark)) $watermark['watermarkTextPosition'] = 'bottomRight';
 					if (!array_key_exists('watermarkTextColor', $watermark)) $watermark['watermarkTextColor'] = 'white';
 
-					// update settings
+					// Update settings
 					if (get_option(WPPC_SETTINGS_GENERAL)) update_option(WPPC_SETTINGS_GENERAL, $general);
 						else add_option(WPPC_SETTINGS_GENERAL, $general);
 					if (get_option(WPPC_SETTINGS_WATERMARK)) update_option(WPPC_SETTINGS_WATERMARK, $watermark);
@@ -111,11 +115,14 @@
 			}
 
 			/**
-			 * CREATE NECESSARY TABLES
+			 * Create plugin database tables
+			 *
+			 * @since 1.0
 			 */
 			public function createTables()
 			{
 				global $wpdb;
+				
 				/**
 				 * We'll set the default character set and collation for this table.
 				 * If we don't do this, some characters could end up being converted 
@@ -127,10 +134,10 @@
 				if (!empty($wpdb->collate))
 					$charset_collate .= " COLLATE {$wpdb->collate}";
 
-				// load script to be able to use dbDelta
+				// Load script to be able to use dbDelta
 				require_once(ABSPATH.'wp-admin/includes/upgrade.php');
 
-				// table that contains all contests
+				// Table that contains all contests
 				$sql = "CREATE TABLE ".WPPC_TABLE_ALL_CONTESTS." (
 					id mediumint(9) NOT NULL AUTO_INCREMENT,
 					contest_name tinytext NOT NULL,
@@ -161,7 +168,7 @@
 					) ".$charset_collate.";";
 				dbDelta($sql);
 
-				// table that contains all contests entries
+				// Table that contains all contests entries
 				$sql = "CREATE TABLE ".WPPC_TABLE_CONTESTS_ENTRIES." (
 					id mediumint(9) NOT NULL AUTO_INCREMENT,
 					contest_id mediumint(9) UNSIGNED NOT NULL,
@@ -179,7 +186,7 @@
 					) ".$charset_collate.";";
 				dbDelta($sql);
 
-				// table that contains votes for contests
+				// Table that contains votes for contests
 				$sql = "CREATE TABLE ".WPPC_TABLE_CONTESTS_VOTES." (
 					id mediumint(9) NOT NULL AUTO_INCREMENT,
 					contest_id mediumint(9) UNSIGNED NOT NULL,
@@ -199,89 +206,72 @@
 			}
 
 			/**
-			 * CALLBACK FUNCTION TO CREATE WPPC SETTINGS
+			 * Create settings page
+			 *
+			 * @since 1.0
 			 */
 			public function addWPPCSettings()
 			{
-				/**
-				 * WP PC Settings
-				 */
 				add_submenu_page('wppc-all-contests', 'WordPress Photo Contests Settings', 'Settings', 'manage_options', 'wppc-settings', array($this, 'displayWPPCSettings'));
 			}
 
 			/**
-			 * CALLBACK FUNCTION TO REGISTER WPPC SETTINGS
+			 * Register plugin settings
+			 *
+			 * @since 1.0
 			 */
 			public function registerWPPCSettings()
 			{
-				/**
-				 * REGISTER SETTINGS SECTIONS
-				 */
-				
-				// add general settings section
+				// General settings section
 			    add_settings_section(
-			        WPPC_SETTINGS_GENERAL,         // ID used to identify this section and with which to register options
-			        'General Settings',                  // Title to be displayed on the administration page
+			        WPPC_SETTINGS_GENERAL,         			// ID used to identify this section and with which to register options
+			        'General Settings',                  	// Title to be displayed on the administration page
 			        array($this, 'setWPPCGeneralSettings'), // Callback used to render the description of the section
-			        WPPC_SETTINGS_GENERAL              // Page on which to add this section of options
+			        WPPC_SETTINGS_GENERAL              		// Page on which to add this section of options
 			    );
 
-			    // add watermark settings section
+			    // Watermark settings section
 				add_settings_section(WPPC_SETTINGS_WATERMARK, 'Watermark Settings', array($this, 'setWPPCWatermarkSettings'), WPPC_SETTINGS_WATERMARK);
 
-
-				/**
-				 * REGISTER SETTINGS FIELDS
-				 */
-
-				// ask to load facebook js
-				add_settings_field('wppc-fb-js', 'Load Facebook JS', array($this, 'loadFacebookJS'), WPPC_SETTINGS_GENERAL, WPPC_SETTINGS_GENERAL, array('check only if your there doesn\'t already load FB API', $this->generalSettings['loadFacebookJs']));
-
-				// ask for facebook app id
-				add_settings_field('wppc-fb-app-id', 'Facebook App ID', array($this, 'getFacebookAppId'), WPPC_SETTINGS_GENERAL, WPPC_SETTINGS_GENERAL, array('', $this->generalSettings['facebookAppId']));
-
-				// set timezone
+				// Set timezone
 				add_settings_field('wppc-timezone', 'Contest Timezone', array($this, 'getTimezone'), WPPC_SETTINGS_GENERAL, WPPC_SETTINGS_GENERAL, array('select your timezone (default UTC)', $this->generalSettings['timezone']));
 
-				// ask to send email to administrators when a new photo is registered
+				// Email admins when new photo submitted
 				add_settings_field('wppc-notify-admins', 'Send Registration Email', array($this, 'getNotifyAdmins'), WPPC_SETTINGS_GENERAL, WPPC_SETTINGS_GENERAL, array('check if you want your admins to be emailed when a new photo is registered for a contest', $this->generalSettings['notifyAdmins']));
 
-				// ask to delete tables
+				// Delete tables on plugin uninstall
 				add_settings_field('wppc-delete-tables', 'Delete Database on Uninstall', array($this, 'getDeleteTables'), WPPC_SETTINGS_GENERAL, WPPC_SETTINGS_GENERAL, array('check this if you want to erase the tables on uninstall', $this->generalSettings['deleteTables']));
 
-				// ask for watermark text size
+				// Watermark text size
 				add_settings_field('wppc-watermark-text-size', 'Text Size', array($this, 'getWatermarkTextSize'), WPPC_SETTINGS_WATERMARK, WPPC_SETTINGS_WATERMARK, array('px', $this->watermarkSettings['watermarkTextSize']));
 
-				// ask for watermark position
+				// Watermark text position
 				add_settings_field('wppc-watermark-text-position', 'Text Position', array($this, 'getWatermarkTextPosition'), WPPC_SETTINGS_WATERMARK, WPPC_SETTINGS_WATERMARK, array('where do you want the watermark to be positioned', $this->watermarkSettings['watermarkTextPosition']));
 
-				// ask for watermark color
+				// Watermark text color
 				add_settings_field('wppc-watermark-text-color', 'Text Color', array($this, 'getWatermarkTextColor'), WPPC_SETTINGS_WATERMARK, WPPC_SETTINGS_WATERMARK, array('the color for the watermark text', $this->watermarkSettings['watermarkTextColor']));
 
-
-				/**
-				 * REGISTER SETTINGS
-				 */
-				
-				// register general settings
+				// Register general settings
 				register_setting(WPPC_SETTINGS_GENERAL, WPPC_SETTINGS_GENERAL, array($this, 'validateWPPCGeneralSettings'));
 
-				// register watermark settings
+				// Register watermark settings
 				register_setting(WPPC_SETTINGS_WATERMARK, WPPC_SETTINGS_WATERMARK, array($this, 'validateWPPCWatermarkSettings'));
 			}
 
 			/**
-			 * CALLBACK FUNCTION TO VALIDATE GENERAL SETTINGS
+			 * Validate general settings
+			 *
+			 * @since 1.0
+			 * 
 			 * @param  $input raw input
-			 * @return escaped input
+			 * 
+			 * @return sanitized input
 			 */
 			public function validateWPPCGeneralSettings($input)
 			{
 				$input['version'] = WPPC_VERSION;
 				
 				$input['deleteTables'] = $_POST['deleteTables'];
-				$input['facebookAppId'] = $_POST['facebookAppId'];
-				$input['loadFacebookJs'] = $_POST['loadFacebookJs'];
 				$input['timezone'] = $_POST['timezone'];
 				$input['notifyAdmins'] = $_POST['notifyAdmins'];
 
@@ -289,7 +279,13 @@
 			}
 
 			/**
-			 * CALLBACK FUNCTION TO VALIDATE WATERMARK SETTINGS
+			 * Validate watermark settings
+			 *
+			 * @since 1.0
+			 * 
+			 * @param  $input raw input
+			 *
+			 * @return sanitized input
 			 */
 			public function validateWPPCWatermarkSettings($input)
 			{
@@ -302,7 +298,9 @@
 
 
 			/**
-			 * CALLBACK FUNCTION TO DISPLAY WPPC SETTINGS
+			 * Render settings page
+			 *
+			 * @since 1.0
 			 */
 			public function displayWPPCSettings()
 			{
@@ -322,13 +320,14 @@
 
 				<form method="post" action="options.php">
 					<?php
-						// GENERAL TAB
+						
+						// General tab
 						if ($activeTab == 'general'):
 							settings_fields(WPPC_SETTINGS_GENERAL);
 							do_settings_sections(WPPC_SETTINGS_GENERAL);
 						endif;
 
-						// WATERMARK TAB
+						// Watermark tab
 						if ($activeTab == 'watermark'):
 							settings_fields(WPPC_SETTINGS_WATERMARK);
 							do_settings_sections(WPPC_SETTINGS_WATERMARK);
@@ -340,7 +339,9 @@
 			}
 
 			/**
-			 * CALLBACK FUNCTION TO RENDER THE GENERAL SECTION DESCRIPTION
+			 * Render general settings description
+			 *
+			 * @since 1.0
 			 */
 			public function setWPPCGeneralSettings()
 			{
@@ -348,39 +349,19 @@
 			}
 
 			/**
-			 * CALLBACK FUNCTION TO RENDER THE WATERMARK SECTION DESCRIPTION
+			 * Render watermark settings description
+			 *
+			 * @since 1.0
 			 */
 			public function setWPPCWatermarkSettings()
 			{
 				echo "<p></p>";
 			}
 
-
 			/**
-			 * CALLBACK FUNCTION ASKING TO LOAD FB JS
-			 */
-			public function loadFacebookJS($args)
-			{
-				?>
-				<input type="checkbox" name="loadFacebookJs" id="loadFacebookJs" value="1"<?php echo checked(1, $args[1], false) ?> />
-				<label for="loadFacebookJs"><?php echo $args[0] ?></label>
-				<?php
-			}
-
-
-			/**
-			 * CALLBACK FUNCTION TO ASK FOR FACEBOOK APP ID
-			 */
-			public function getFacebookAppId($args)
-			{
-				?>
-				<input type="text" name="facebookAppId" id="facebookAppId" value="<?php echo $args[1] ?>" />
-				<label for="facebookAppId"><?php echo $args[0] ?></label>
-				<?php
-			}
-
-			/**
-			 * CALLBACK FUNCTION TO ASK FOR TIMEZONE
+			 * Set timezone
+			 *
+			 * @since 1.0
 			 */
 			public function getTimezone($args)
 			{
@@ -397,7 +378,9 @@
 			}
 
 			/**
-			 * CALLBACK FUNCTION TO ASK TO NOTIFY ADMINS
+			 * Notify admins when new photo submitted
+			 *
+			 * @since 1.0
 			 */
 			public function getNotifyAdmins($args)
 			{
@@ -408,7 +391,9 @@
 			}
 
 			/**
-			 * CALLBACK FUNCTION FOR "DELETE TABLES ON UNINSTALL" FIELD
+			 * Delete plugin tables on uninstall
+			 * 
+			 * @since 1.0
 			 */
 			public function getDeleteTables($args)
 			{
@@ -419,7 +404,9 @@
 			}
 
 			/**
-			 * CALLBACK FUNCTION TO ASK FOR WATERMARK TEXT SIZE
+			 * Watermark text size
+			 *
+			 * @since 1.0
 			 */
 			public function getWatermarkTextSize($args)
 			{
@@ -430,7 +417,9 @@
 			}
 
 			/**
-			 * CALLBACK FUNCTION TO ASK FOR WATERMARK TEXT POSITION
+			 * Watermark text position
+			 *
+			 * @since 1.0
 			 */
 			public function getWatermarkTextPosition($args)
 			{
@@ -449,7 +438,9 @@
 			}
 
 			/**
-			 * CALLBACK FUNCTION TO ASK FOR WATERMARK TEXT COLOR
+			 * Watermark text color
+			 *
+			 * @since 1.0
 			 */
 			public function getWatermarkTextColor($args)
 			{

@@ -20,7 +20,7 @@
 	// Plugin version
 	if (!defined('WPPC_VERSION')) define('WPPC_VERSION', '1.1'); 
 
-	// ImagesLoaded js version
+	// ImagesLoaded JS version
 	if (!defined('IMAGES_LOADED_VERSION')) define('IMAGES_LOADED_VERSION', '3.1.8');
 
 	// Reference to this plugin's file
@@ -29,7 +29,7 @@
 	// Plugin directory path
 	if (!defined('WPPC_DIR')) define('WPPC_DIR', plugin_dir_path(__FILE__));
 
-	// Plugin URL
+	// Plugin URI
 	if (!defined('WPPC_URI')) define('WPPC_URI', trailingslashit(plugins_url('', __FILE__)));
 
 	// General settings group
@@ -67,31 +67,31 @@
 
 
 	/**
-	 * VIEW ALL CONTESTS
+	 * View all contests
 	 */
-	include_once(WPPC_DIR.'api/wppc-all-contests.php');
+	include_once(WPPC_DIR.'classes/wppc-all-contests.php');
 
 	/**
-	 * CREATE A NEW CONTEST PAGE
+	 * Create a new contest/edit existing contest
 	 */
-	include_once(WPPC_DIR.'api/wppc-contest.php');
+	include_once(WPPC_DIR.'classes/wppc-contest.php');
 	new WPPCContest();
 
 	/**
-	 * CONTEST PHOTOS
+	 * View/Approve/Trash contest photos
 	 */
-	include_once(WPPC_DIR.'api/wppc-photos.php');
+	include_once(WPPC_DIR.'classes/wppc-photos.php');
 
 	/**
-	 * CREATE THE SETTINGS PAGE
+	 * Settings page
 	 */
-	include_once(WPPC_DIR.'api/wppc-settings.php');
+	include_once(WPPC_DIR.'classes/wppc-settings.php');
 	new WPPCSettings();
 
 	/**
-	 * ADD SHORTCODE
+	 * Add shortcode
 	 */
-	include_once(WPPC_DIR.'api/wppc-shortcode.php');
+	include_once(WPPC_DIR.'classes/wppc-shortcode.php');
 	new WPPCShortcode();
 
 ?>
